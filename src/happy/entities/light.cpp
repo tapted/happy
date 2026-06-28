@@ -41,7 +41,9 @@ std::string Light::get_state_payload() const {
   return doc.to_string();
 }
 
-void Light::handle_command(const unique_cjson& root_ptr) {
+void Light::handle_command(const std::string_view payload) {
+  unique_cjson root_ptr{cJSON_ParseWithLength(payload.data(), payload.length())};
+
   // Wrap the raw pointer in our non-owning view
   JsonNodeView root(root_ptr.get());
   if (!root) return;

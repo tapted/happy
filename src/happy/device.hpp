@@ -2,6 +2,7 @@
 
 #include <string_view>
 
+#include "espbase/json_fwd.h"
 #include "happy/core/intrusive_list.hpp"
 
 namespace HAPPY {
@@ -24,17 +25,7 @@ class Device {
   const char* get_name() const { return config_.name; }
 
   // Injects the HA "device" grouping block into an existing json.h builder
-  template <typename Builder>
-  void inject_into(Builder& builder) const {
-    builder.with_object("device", [this](auto& dev) {
-      dev.with_array("identifiers", [this](auto& arr) { arr.push(config_.identifiers); });
-      dev.set("name", config_.name);
-
-      if (config_.manufacturer) dev.set("manufacturer", config_.manufacturer);
-      if (config_.model) dev.set("model", config_.model);
-      if (config_.sw_version) dev.set("sw_version", config_.sw_version);
-    });
-  }
+  void inject_into(JsonObjectBuilder& builder) const;
 
   // --- Registry Implementation ---
   void register_entity(Entity* entity);

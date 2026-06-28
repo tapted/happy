@@ -21,7 +21,7 @@ class Light : public Entity {
 
   constexpr Light(Device& device, std::string_view object_id, std::string_view name, Config config)
       : Entity(device, "light", object_id, name), config_(std::move(config)) {}
-
+  
   // --- State Accessors ---
   bool is_on() const { return is_on_; }
   uint8_t brightness() const { return brightness_; }
@@ -40,7 +40,7 @@ class Light : public Entity {
   std::string get_state_payload() const override;
 
   void initialize_topics() override { initialize_base_topics(true); }
-  void handle_command(const unique_cjson& root) override;
+  void handle_command(const std::string_view payload) override;
 
  private:
   Config config_;
