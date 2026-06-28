@@ -11,6 +11,23 @@ struct RgbColor {
   uint32_t r, g, b;
 };
 
+// A Light entity that supports ON/OFF, brightness, and RGB color.
+
+// E.g.,
+// ```cpp
+// static void on_light_update(const HAPPY::Entities::Light& light) {
+//   auto& strip = HAL::LedStrip::default_instance();
+//   auto [r, g, b] = light.scaled_rgb();
+//   strip.set_pixel(0, r, g, b);
+//   strip.refresh();
+// }
+//
+// HAPPY::Entities::Light onboard_led(dongley_device, "status_led", "Onboard LED",
+//                                    {
+//                                        .supports_rgb = true,
+//                                        .on_update = on_light_update,
+//                                    });
+// ```
 class Light : public Entity {
  public:
   struct Config {

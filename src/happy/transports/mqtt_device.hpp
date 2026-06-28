@@ -13,8 +13,19 @@ class MqttDevice : public Device {
   // Inherit the Device constructor
   using Device::Device;
 
-  // --- 1. The Startup Sequence ---
+  // Start the MQTT client with the given configuration and publish initial states. E.g.:
+  // ```cpp
+  // void Network::network_ready(const esp_netif_ip_info_t& /*ip_info*/) {
+  //   esp_mqtt_client_config_t mqtt_cfg = {};
+  //   mqtt_cfg.broker.address.uri = "mqtt://10.1.0.201";
+  //   mqtt_cfg.credentials.username = "dongle1e80";
+  //   mqtt_cfg.credentials.authentication.password = "mysecretpassword";
+  //   dongley_device.begin(mqtt_cfg);
+  // }
+  // ```
   void begin(const esp_mqtt_client_config_t& mqtt_cfg);
+
+  // Publish a single entity.
   void publish(const Entity& entity) const override;
 
   esp_mqtt_client_handle_t get_client() const { return client_; }

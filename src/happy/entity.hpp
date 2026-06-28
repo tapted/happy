@@ -35,7 +35,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
 
   virtual void initialize_topics() = 0;
   virtual std::string get_discovery_payload() const = 0;
-  virtual std::string get_state_payload() const = 0;
+  virtual std::string get_state_payload() const { return std::string(); }
 
   // Default empty implementation. Sensors ignore this; Lights override it.
   virtual void handle_command(std::string_view /*payload*/) {}

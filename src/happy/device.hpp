@@ -9,6 +9,18 @@ namespace HAPPY {
 
 class Entity;  // Forward declaration
 
+// A Device represents a physical or virtual device that can have multiple entities (sensors,
+// lights, buttons, etc.) associated with it.
+// Sample usage:
+// ```cpp
+// HAPPY::Transports::MqttDevice dongley_device({
+//     .identifiers = "dongley_v1_001",
+//     .name = "Dongley",
+//     .manufacturer = "Custom",
+//     .model = "ESP32-S3 WROOM-1 DevKit",
+//     .sw_version = "0.1",  // esp_app_get_description()->version
+// });
+// ```
 class Device {
  public:
   struct Config {
