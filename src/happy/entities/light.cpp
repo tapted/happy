@@ -50,42 +50,18 @@ void Light::handle_command(const std::string_view payload) {
 
   bool state_changed = false;
 
-  // 1. Check State (std::optional encapsulates the existence and type check)
-  if (auto state = root["state"].as_string()) {
-    is_on_ = (*state == "ON");
-    state_changed = true;
-  }
-
-  // 2. Check Brightness
-  if (auto bri = root["brightness"].as_int()) {
-    brightness_ = *bri;
-    state_changed = true;
-  }
-
-  // 3. Check RGB Color (Navigating into a nested object safely)
+  state_changed |= root.change(state_.is_on, "state", [](auto s) { return s == "ON"; });
+  state_changed |= root.change(state_.brightness, "brightness");
   if (auto color = root["color"]) {
-    if (auto r = color["r"].as_int()) {
-      r_ = *r;
-      state_changed = true;
-    }
-    if (auto g = color["g"].as_int()) {
-      g_ = *g;
-      state_changed = true;
-    }
-    if (auto b = color["b"].as_int()) {
-      b_ = *b;
-      state_changed = true;
-    }
+    state_changed |= color.change(state_.r, "r");
+    state_changed |= color.change(state_.g, "g");
+    state_changed |= color.change(state_.b, "b");
   }
 
-  // 4. Trigger the hardware update callback
-  if (state_changed && config_.on_update) {
-    config_.on_update(*this);
+  if (!state_changed) return;
 
-    // Acknowledge the new state back to Home Assistant
-    std::string state_json = get_state_payload();
-    device_.publish(*this);
-  }
+  device_.publish(*this);
+  save_state();
+  if (config_.on_update) config_.on_update(*this);
 }
-
 }  // namespace HAPPY::Entities

@@ -42,8 +42,33 @@ class Entity : public Core::IntrusiveNode<Entity> {
 
  protected:
   void initialize_base_topics(bool expects_commands = false);
+  bool load_nvs_blob(void* dest, size_t size) const;
+  void save_nvs_blob(const void* src, size_t size) const;
+
   // Bootstraps the standard JSON fields required by all HA entities
   void inject_base_config(JsonObjectBuilder& builder) const;
+};
+
+// PersistentEntity is a template class that extends Entity to provide automatic state persistence
+// using NVS (Non-Volatile Storage). It requires the derived class and a trivially copyable state
+// struct as template parameters. The state is automatically loaded from NVS during initialization
+// and can be saved back to NVS when needed.
+template <typename Derived, typename StateStruct>
+class PersistentEntity : public Entity {
+ protected:
+  StateStruct state_{};
+
+  using Entity::Entity;
+
+  // Returns true if the state was successfully loaded from NVS, false otherwise.
+  bool initialize_base_topics(bool expects_commands = false) {
+    Entity::initialize_base_topics(expects_commands);
+    static_assert(std::is_trivially_copyable_v<StateStruct>,
+                  "PersistentEntity StateStruct must be a trivially copyable POD type.");
+    return this->load_nvs_blob(&state_, sizeof(StateStruct));
+  }
+
+  void save_state() const { this->save_nvs_blob(&state_, sizeof(StateStruct)); }
 };
 
 }  // namespace HAPPY
