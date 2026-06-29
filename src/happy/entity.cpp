@@ -2,7 +2,6 @@
 
 #include <algorithm>
 #include <cstdio>
-#include <format>
 #include <ranges>
 
 #include "espbase/json.h"
@@ -11,13 +10,20 @@
 namespace HAPPY {
 
 void Entity::initialize_base_topics(bool expects_commands) {
-  discovery_topic_ =
-      std::format("homeassistant/{}/{}/{}/config", domain_, device_.get_identifier(), object_id_);
+  char buf[128];
+  snprintf(buf, sizeof(buf), "homeassistant/%.*s/%s/%.*s/config",
+           static_cast<int>(domain_.length()), domain_.data(), device_.get_identifier(),
+           static_cast<int>(object_id_.length()), object_id_.data());
+  discovery_topic_ = buf;
 
-  state_topic_ = std::format("{}/state", device_.get_identifier());
+  snprintf(buf, sizeof(buf), "%.*s/state", static_cast<int>(object_id_.length()),
+           object_id_.data());
+  state_topic_ = buf;
 
   if (expects_commands) {
-    command_topic_ = std::format("{}/{}/set", device_.get_identifier(), object_id_);
+    snprintf(buf, sizeof(buf), "%s/%.*s/set", device_.get_identifier(),
+             static_cast<int>(object_id_.length()), object_id_.data());
+    command_topic_ = buf;
   }
 }
 
@@ -52,8 +58,13 @@ void Entity::save_nvs_blob(const void* src, size_t size) const {
 }
 
 void Entity::inject_base_config(JsonObjectBuilder& builder) const {
+  char buf[128];
+  snprintf(buf, sizeof(buf), "%s_%.*s", device_.get_identifier(),
+           static_cast<int>(object_id_.length()), object_id_.data());
+  const char* unique_id = buf;
+
   builder.set("name", name_);
-  builder.set("unique_id", std::format("{}_{}", device_.get_identifier(), object_id_).c_str());
+  builder.set("unique_id", unique_id);
   builder.set("state_topic", state_topic_);
 
   // Inject the physical device grouping data

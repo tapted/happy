@@ -15,6 +15,8 @@ AlarmController::AlarmController(Device& device, uint8_t alarm_id, OnAlarmUpdate
       on_test_(on_test),
 
       // We dynamically construct the IDs like "alarm_1_time"
+      // TODO: is this bad? time_,tone_,test_btn_ take std::string_view so we could _maybe_ pass
+      // a ref to a char[] buffer.
       time_id_(std::format("alarm_{}_time", id)),
       time_name_(std::format("Alarm {} Time", id)),
       tone_id_(std::format("alarm_{}_tone", id)),

@@ -76,8 +76,7 @@ void Light::handle_command(const std::string_view payload) {
            state_.is_on, state_.brightness, state_.r, state_.g, state_.b, state_changed);
 
   if (!state_changed) return;
-
-  device_.publish(*this);
+  publish();
   save_state();
   if (config_.on_update) config_.on_update(*this);
 }

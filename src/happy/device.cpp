@@ -21,6 +21,7 @@ void Device::inject_into(JsonObjectBuilder& builder) const {
 
 void Device::register_entity(HAPPY::Entity* entity) {
   entities_.push_back(entity);
+  // Note: entity might not be fully initialized yet.
 }
 
 void Device::begin() {

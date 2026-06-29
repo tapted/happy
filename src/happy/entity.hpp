@@ -27,6 +27,8 @@ class Entity : public Core::IntrusiveNode<Entity> {
     device_.register_entity(this);
   }
 
+  void publish() const { device_.publish(*this); }
+
   virtual ~Entity() = default;
 
   const std::string& get_discovery_topic() const { return discovery_topic_; }
