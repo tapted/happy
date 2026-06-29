@@ -26,7 +26,7 @@ class MqttDevice : public Device {
   void begin(const esp_mqtt_client_config_t& mqtt_cfg);
 
   // Publish a single entity.
-  void publish(const Entity& entity) const override;
+  int publish(const Entity& entity) const override;
 
   esp_mqtt_client_handle_t get_client() const { return client_; }
 
@@ -38,6 +38,9 @@ class MqttDevice : public Device {
   void handle_event(int32_t event_id, esp_mqtt_event_handle_t event);
 
   void on_connected();
+  int mqtt_publish(const char* topic, const char* payload, int qos = 1, int retain = 1) const;
+  int mqtt_enqueue(const char* topic, const char* payload, int qos = 1, int retain = 1,
+                   bool store = false) const;
 };
 
 }  // namespace HAPPY::Transports

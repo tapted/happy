@@ -47,6 +47,7 @@ void Entity::save_nvs_blob(const void* src, size_t size) const {
   if (store_res) {
     store_res->set_raw_blob(NvsStore::Key(key), src, size).log_error("Entity", key);
     store_res->commit().log_error("Entity", key);
+    ESP_LOGD("Entity", "Saved state to NVS: %s/%s (%zu bytes)", ns, key, size);
   }
 }
 

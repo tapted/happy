@@ -1,5 +1,7 @@
 #include "happy/entities/light.hpp"
 
+#include <esp_log.h>
+
 #include "espbase/json.h"
 
 namespace HAPPY::Entities {
@@ -30,15 +32,25 @@ std::string Light::get_state_payload() const {
   JsonDocument doc;
   JsonObjectBuilder builder(doc.get());
 
-  builder.set("state", is_on_ ? "ON" : "OFF");
-  builder.set("brightness", brightness_);
+  builder.set("state", state_.is_on ? "ON" : "OFF");
+  builder.set("brightness", state_.brightness);
   builder.with_object("color", [&](auto& color) {
-    color.set("r", r_);
-    color.set("g", g_);
-    color.set("b", b_);
+    color.set("r", state_.r);
+    color.set("g", state_.g);
+    color.set("b", state_.b);
   });
 
   return doc.to_string();
+}
+
+void Light::initialize_topics() {
+  bool loaded_from_nvs = initialize_base_topics(true);
+  ESP_LOGD("Light",
+           "Initialized topics for %s (loaded_from_nvs=%d): discovery=%s, state=%s, command=%s, "
+           "state_payload=%s",
+           object_id_.data(), loaded_from_nvs, discovery_topic_.c_str(), state_topic_.c_str(),
+           command_topic_.c_str(), get_state_payload().c_str());
+  if (loaded_from_nvs && config_.on_update) config_.on_update(*this);
 }
 
 void Light::handle_command(const std::string_view payload) {
@@ -57,6 +69,11 @@ void Light::handle_command(const std::string_view payload) {
     state_changed |= color.change(state_.g, "g");
     state_changed |= color.change(state_.b, "b");
   }
+
+  ESP_LOGD("Light", "Command received for %s: %.*s", object_id_.data(),
+           static_cast<int>(payload.length()), payload.data());
+  ESP_LOGD("Light", "New state: is_on=%d, brightness=%d, r=%d, g=%d, b=%d (changed=%d)",
+           state_.is_on, state_.brightness, state_.r, state_.g, state_.b, state_changed);
 
   if (!state_changed) return;
 

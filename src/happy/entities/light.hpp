@@ -62,19 +62,11 @@ class Light : public PersistentEntity<Light, LightState> {
   }
   std::string get_discovery_payload() const override;
   std::string get_state_payload() const override;
-
-  void initialize_topics() override {
-    bool loaded_from_nvs = initialize_base_topics(true);
-    if (loaded_from_nvs && config_.on_update) config_.on_update(*this);
-  }
-  
+  void initialize_topics() override;
   void handle_command(const std::string_view payload) override;
 
  private:
   Config config_;
-  bool is_on_ = false;
-  uint8_t brightness_ = 255;
-  uint8_t r_ = 255, g_ = 255, b_ = 255;
 };
 
 }  // namespace HAPPY::Entities

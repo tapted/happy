@@ -41,7 +41,7 @@ class Device {
 
   // --- Registry Implementation ---
   void register_entity(Entity* entity);
-  virtual void publish(const Entity& entity) const = 0;
+  virtual int publish(const Entity& entity) const = 0;
   void begin();
 
   // Parses JSON and routes it to the matching entity

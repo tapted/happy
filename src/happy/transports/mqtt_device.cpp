@@ -20,16 +20,15 @@ void MqttDevice::begin(const esp_mqtt_client_config_t& mqtt_cfg) {
   esp_mqtt_client_start(client_);
 }
 
-void MqttDevice::publish(const Entity& entity) const {
+int MqttDevice::publish(const Entity& entity) const {
   std::string payload = entity.get_state_payload();
-  // QoS 1, Retain 1
-  esp_mqtt_client_publish(client_, entity.get_state_topic().c_str(), payload.c_str(), 0, 1, 1);
+  return mqtt_enqueue(entity.get_state_topic().c_str(), payload.c_str());
 }
 
 // FreeRTOS requires a static C-style function signature. We use the handler_args
 // to cast the pointer back into our specific C++ instance.
-void MqttDevice::static_event_handler(void* handler_args, esp_event_base_t /*base*/, int32_t event_id,
-                                      void* event_data) {
+void MqttDevice::static_event_handler(void* handler_args, esp_event_base_t /*base*/,
+                                      int32_t event_id, void* event_data) {
   MqttDevice* instance = static_cast<MqttDevice*>(handler_args);
   esp_mqtt_event_handle_t event = static_cast<esp_mqtt_event_handle_t>(event_data);
 
@@ -71,9 +70,7 @@ void MqttDevice::on_connected() {
     std::string payload = entity.get_discovery_payload();
     ESP_LOGD("MqttDevice", "Publishing Discovery for %s: %s", entity.get_discovery_topic().c_str(),
              payload.c_str());
-    // QoS 1, Retain 1
-    esp_mqtt_client_publish(client_, entity.get_discovery_topic().c_str(), payload.c_str(), 0, 1,
-                            1);
+    mqtt_publish(entity.get_discovery_topic().c_str(), payload.c_str());
 
     // 2. Subscribe to the command topic if the entity has one (e.g., Lights, Switches)
     if (!entity.get_command_topic().empty()) {
@@ -86,6 +83,15 @@ void MqttDevice::on_connected() {
   for (const Entity& entity : entities_) {
     publish(entity);
   }
+}
+
+int MqttDevice::mqtt_publish(const char* topic, const char* payload, int qos, int retain) const {
+  return esp_mqtt_client_publish(client_, topic, payload, 0, qos, retain);
+}
+
+int MqttDevice::mqtt_enqueue(const char* topic, const char* payload, int qos, int retain,
+                             bool store) const {
+  return esp_mqtt_client_enqueue(client_, topic, payload, 0, qos, retain, store);
 }
 
 }  // namespace HAPPY::Transports
