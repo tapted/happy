@@ -38,8 +38,8 @@ class AlarmController {
 
   using OnAlarmUpdateCallback = std::function<void(const AlarmController&)>;
 
-  AlarmController(Device& device, uint8_t alarm_id, OnAlarmUpdateCallback on_update,
-                  OnAlarmUpdateCallback on_test);
+  AlarmController(Device& device, uint8_t alarm_id, std::span<const char* const> alarm_tones,
+                  OnAlarmUpdateCallback on_update, OnAlarmUpdateCallback on_test);
 
   std::string_view selected_tone() const { return tone_.get_selected(); }
   const Time& time() const { return time_; }

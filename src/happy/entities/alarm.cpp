@@ -2,14 +2,11 @@
 
 #include <format>
 
-static constexpr const char* const ALARM_TONES[] = {
-    "acknowledge", "success", "error", "startup", "Jasmine Flower",
-};
-
 namespace HAPPY::Entities {
 
-AlarmController::AlarmController(Device& device, uint8_t alarm_id, OnAlarmUpdateCallback on_update,
-                                 OnAlarmUpdateCallback on_test)
+AlarmController::AlarmController(Device& device, uint8_t alarm_id,
+                                 std::span<const char* const> alarm_tones,
+                                 OnAlarmUpdateCallback on_update, OnAlarmUpdateCallback on_test)
     : id(alarm_id),
       on_update_(on_update),
       on_test_(on_test),
@@ -33,7 +30,7 @@ AlarmController::AlarmController(Device& device, uint8_t alarm_id, OnAlarmUpdate
       tone_(device, tone_id_, tone_name_,
             {
                 .icon = "mdi:music-note",
-                .options = ALARM_TONES,
+                .options = alarm_tones,
                 .on_update = [this](const auto& t) { this->on_update_(*this); },
             }),
 
