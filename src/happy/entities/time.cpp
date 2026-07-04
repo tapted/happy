@@ -1,7 +1,6 @@
 #include "happy/entities/time.hpp"
 
 #include <charconv>
-#include <format>
 
 #include "espbase/json.h"
 
@@ -19,7 +18,9 @@ std::string Time::get_discovery_payload() const {
 }
 
 std::string Time::get_state_payload() const {
-  return std::format("{:02}:{:02}:{:02}", hour_, minute_, second_);
+  char buffer[12];  // "HH:MM:SS" + null terminator
+  std::snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", hour_, minute_, second_);
+  return std::string(buffer);
 }
 
 void Time::handle_command(std::string_view payload) {
