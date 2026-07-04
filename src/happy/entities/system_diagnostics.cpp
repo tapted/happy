@@ -2,8 +2,11 @@
 
 #include <esp_app_desc.h>
 #include <esp_heap_caps.h>
+#include <esp_image_format.h>
+#include <esp_ota_ops.h>
 #include <esp_system.h>
 #include <esp_timer.h>
+#include <sys/statvfs.h>
 #include <sys/time.h>
 #include <time.h>
 
@@ -109,7 +112,56 @@ SystemDiagnostics::SystemDiagnostics(Device& device)
               .icon = "mdi:expansion-card",
               .get_value =
                   []() { return std::to_string(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)); },
-          }) {
+          }),
+      firmware_size_(device, "firmware_size", "App Image Size",
+                     {
+                         .device_class = "data_size",
+                         .unit_of_measurement = "B",
+                         .icon = "mdi:file-code-outline",
+                         .get_value = []() -> std::string {
+                           const esp_partition_t* running = esp_ota_get_running_partition();
+                           if (!running) return "unknown";
+
+                           esp_image_metadata_t data;
+                           const esp_partition_pos_t pos = {
+                               .offset = running->address,
+                               .size = running->size,
+                           };
+
+                           if (esp_image_get_metadata(&pos, &data) == ESP_OK) {
+                             return std::to_string(data.image_len);
+                           }
+                           return "unknown";
+                         },
+                     }),
+
+      ota_partition_size_(device, "ota_partition_size", "OTA Partition Size",
+                          {
+                              .device_class = "data_size",
+                              .unit_of_measurement = "B",
+                              .icon = "mdi:folder-table",
+                              .get_value = []() -> std::string {
+                                const esp_partition_t* running = esp_ota_get_running_partition();
+                                if (running) {
+                                  return std::to_string(running->size);
+                                }
+                                return "unknown";
+                              },
+                          }),
+      fs_used_space_(device, "fs_used_space", "Filesystem Used Space",
+                     {
+                         .device_class = "data_size",
+                         .unit_of_measurement = "B",
+                         .icon = "mdi:harddisk",
+                         .get_value = []() -> std::string {
+                           struct statvfs stat;
+                           if (statvfs("/fs", &stat) == 0) {
+                             size_t used = (stat.f_blocks - stat.f_bfree) * stat.f_frsize;
+                             return std::to_string(used);
+                           }
+                           return "unknown";
+                         },
+                     }) {
 }
 
 void SystemDiagnostics::publish_all() const {
@@ -118,6 +170,9 @@ void SystemDiagnostics::publish_all() const {
   compile_date_.publish();
   free_iram_.publish();
   free_spiram_.publish();
+  firmware_size_.publish();
+  ota_partition_size_.publish();
+  fs_used_space_.publish();
 }
 
 }  // namespace HAPPY::Entities

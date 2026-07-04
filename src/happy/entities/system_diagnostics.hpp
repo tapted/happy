@@ -18,6 +18,9 @@ class SystemDiagnostics {
   Sensor compile_date_;
   Sensor free_iram_;
   Sensor free_spiram_;
+  Sensor firmware_size_;
+  Sensor ota_partition_size_;
+  Sensor fs_used_space_;
 };
 
 }  // namespace HAPPY::Entities
