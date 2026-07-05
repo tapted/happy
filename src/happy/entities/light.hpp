@@ -39,10 +39,10 @@ class Light : public PersistentEntity<Light, LightState> {
   struct Config {
     const char* icon = "mdi:led-strip-variant";
     bool supports_rgb = true;
-    std::function<void(const Light&)> on_update = nullptr;
+    void (*on_update)(const Light&) = nullptr;
   };
 
-  constexpr Light(Device& device, std::string_view object_id, std::string_view name, Config config)
+  Light(Device& device, std::string_view object_id, std::string_view name, Config config)
       : PersistentEntity<Light, LightState>(device, "light", object_id, name),
         config_(std::move(config)) {}
 
