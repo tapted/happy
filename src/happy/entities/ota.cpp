@@ -8,13 +8,14 @@
 #include <string_view>
 
 #include "espbase/json.h"
+#include "espbase/nvs_store.hpp"
 
 namespace HAPPY::Entities {
 
 static constexpr const char* TAG = "HAPPY_OTA";
 
-static void perform_ota(const char* url) {
-  ESP_LOGI(TAG, "Downloading firmware: %s", url);
+static void perform_ota(const char* url, const char* new_version_str) {
+  ESP_LOGI(TAG, "Downloading firmware: %s (version: %s)", url, new_version_str);
 
   esp_http_client_config_t ota_client_config{};
   ota_client_config.url = url;
@@ -25,7 +26,15 @@ static void perform_ota(const char* url) {
 
   esp_err_t ret = esp_https_ota(&ota_config);
   if (ret == ESP_OK) {
-    ESP_LOGI(TAG, "OTA Success! Rebooting...");
+    ESP_LOGI(TAG, "OTA Success! Saving new version %s to NVS...", new_version_str);
+
+    // Save the dynamic version so it survives the reboot
+    auto store = NvsStore::open("ha_ota", NVS_READWRITE);
+    if (store) {
+      store->set_string("version", new_version_str);
+      store->commit();
+    }
+
     vTaskDelay(pdMS_TO_TICKS(1000));
     esp_restart();
   } else {
@@ -93,21 +102,19 @@ void OtaController::ota_step(EspTask<OtaController>& task) {
   if (ver_opt && img_opt) {
     if (*ver_opt != self->current_version_) {
       std::string new_version(*ver_opt);
-      ESP_LOGI(TAG, "New version found! Upgrading from %s to %s", self->current_version_,
+      ESP_LOGI(TAG, "New version found! Upgrading from %s to %s", self->current_version_.c_str(),
                new_version.c_str());
 
-      // Clean string concatenation for the firmware binary path
       std::string bin_url = scheme + host + slash + std::string(*img_opt);
-
-      perform_ota(bin_url.c_str());
-    } else {
-      ESP_LOGI(TAG, "Firmware is up to date (%s).", self->current_version_);
+      perform_ota(bin_url.c_str(), new_version.c_str());
     }
+  } else {
+    ESP_LOGI(TAG, "Firmware is up to date (%s).", self->current_version_.c_str());
   }
 }
 
-OtaController::OtaController(Device& device, const char* current_version)
-    : current_version_(current_version),
+OtaController::OtaController(Device& device, const char* base_version)
+    : current_version_(base_version),
       server_url_(device, "ota_server", "OTA Server IP", {.icon = "mdi:server-network"}),
       project_name_(device, "ota_project", "OTA Project Name",
                     {.icon = "mdi:application-brackets"}),
@@ -115,7 +122,28 @@ OtaController::OtaController(Device& device, const char* current_version)
                   {
                       .icon = "mdi:cellphone-arrow-down",
                       .on_press = [this](const auto&) { ota_trigger(); },
-                  }) {
+                  }),
+      current_version_sensor_(device, "current_version", "Running Firmware Version",
+                              {
+                                  .icon = "mdi:tag-check",
+                                  .get_value = [this]() -> std::string { return current_version_; },
+                              }),
+      base_version_sensor_(device, "base_version", "Compiled Base Version",
+                           {
+                               .icon = "mdi:tag-outline",
+                               .get_value = []() -> std::string {
+                                 const esp_app_desc_t* desc = esp_app_get_description();
+                                 return desc ? desc->version : "unknown";
+                               },
+                           }) {
+  // Load the dynamically installed version from NVS if it exists.
+  auto store = NvsStore::open("happy_ota", NVS_READONLY);
+  if (store) {
+    char buf[64]{};
+    if (store->get_string("version", buf, sizeof(buf))) {
+      current_version_ = buf;  // Overwrite the base version.
+    }
+  }
 }
 
 void OtaController::ota_trigger() {
@@ -125,6 +153,7 @@ void OtaController::ota_trigger() {
               .name = "ota_task",
               .stack_size = 4096,
               .prevent_light_sleep = true,
+              .notify_if_started = false,  // Error if running.
           },
           this, &OtaController::ota_step)
       .log_error(TAG, "Failed to start OTA task (already running?)");
