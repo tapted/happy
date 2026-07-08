@@ -9,18 +9,26 @@ import time
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 import paho.mqtt.publish as publish
 
-binary_fetched = threading.Event()
+download_started = threading.Event()
+download_finished = threading.Event()
 
 class OtaRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
-        super().do_GET()
-        if self.path.endswith('.bin'):
-            print(f"\n[OTA] Success: {self.path} fetched by ESP32!")
-            print("[OTA] Shutting down server...")
-            binary_fetched.set()
+        print(f"[OTA] Serving to {self.client_address[0]}: {self.path}...")
+        is_bin = self.path.endswith('.bin')
+        if is_bin:
+            print(f"\n[OTA] ESP32 requested {self.path}. Streaming to flash...", flush=True)
+            download_started.set()
+            
+        # This call blocks while the file is transmitted over the socket
+        super().do_GET() 
+        
+        if is_bin:
+            print(f"\n[OTA] Transfer complete! ESP32 should now reboot.", flush=True)
+            download_finished.set()
 
     def log_message(self, format, *args):
-        print(f"[HTTP] {self.client_address[0]} - {format%args}")
+        print(f"[HTTP] {self.client_address[0]} - {format%args}", flush=True)
 
 def get_local_ip():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
@@ -68,6 +76,8 @@ def main():
     parser.add_argument("--base-version", required=True, help="Base Firmware version (e.g., 1.0.0)")
     parser.add_argument("--broker", required=True, help="MQTT Broker IP")
     parser.add_argument("--topic", required=True, help="MQTT Trigger Topic")
+    parser.add_argument("--user", required=False, help="MQTT Username", default=None)
+    parser.add_argument("--password", required=False, help="MQTT Password", default=None)
     args = parser.parse_args()
 
     # We assume the script is run from the project root (where .git is)
@@ -88,7 +98,7 @@ def main():
     manifest_path = os.path.join(build_dir, 'manifest.json')
     with open(manifest_path, 'w') as f:
         json.dump(manifest, f, indent=2)
-    print(f"[OTA] Generated manifest.json -> Version: {dynamic_version}")
+    print(f"[OTA] Generated manifest.json -> Version: {dynamic_version}", flush=True)
 
     os.chdir(build_dir)
     server = HTTPServer(('0.0.0.0', 8032), OtaRequestHandler)
@@ -97,21 +107,33 @@ def main():
     server_thread.start()
     
     local_ip = get_local_ip()
-    print(f"[OTA] Hosting firmware at http://{local_ip}:8032")
-    print(f"[OTA] Pushing MQTT trigger to {args.topic} on {args.broker}...")
+    print(f"[OTA] Hosting firmware at http://{local_ip}:8032", flush=True)
+    print(f"[OTA] Pushing MQTT trigger to {args.topic} on {args.broker}...", flush=True)
     
     time.sleep(0.5)
     try:
-        publish.single(args.topic, payload="PRESS", hostname=args.broker)
+        auth_dict = None
+        if args.user and args.password:
+            auth_dict = {'username': args.user, 'password': args.password}
+        publish.single(args.topic, payload="PRESS", hostname=args.broker, auth=auth_dict)
     except Exception as e:
-        print(f"[OTA] Failed to publish MQTT message: {e}")
+        print(f"[OTA] Failed to publish MQTT message: {e}", flush=True)
         server.shutdown()
         return
 
-    print("[OTA] Waiting for ESP32 to begin download...")
-    if not binary_fetched.wait(timeout=30.0):
-        print("[OTA] Timeout! ESP32 did not fetch the binary. Check device logs.")
+    print("[OTA] Waiting for ESP32 to begin download...", flush=True)
     
+    # Timeout 1: 30 seconds for the ESP32 to receive MQTT and ask for the binary
+    if not download_started.wait(timeout=30.0):
+        print("[OTA] Timeout! ESP32 did not request the binary. Check device logs.", flush=True)
+        server.shutdown()
+        return
+        
+    # Timeout 2: 300 seconds for the binary to finish streaming and flashing
+    if not download_finished.wait(timeout=300.0):
+        print("[OTA] Timeout! Transfer stalled or ESP32 crashed during flash.", flush=True)
+    
+    # Safe exit once the second event triggers
     server.shutdown()
     server_thread.join()
 

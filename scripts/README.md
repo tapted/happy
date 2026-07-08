@@ -77,7 +77,7 @@ add_custom_target(ota
     DEPENDS app 
     
     # 2. Execute the python script
-    COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/ota_push.py
+    COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/deps/happy/ota_push.py
         --bin ${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}.bin
         --project ${CMAKE_PROJECT_NAME}
         --base-version ${PROJECT_VER}
