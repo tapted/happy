@@ -6,15 +6,29 @@ import subprocess
 import socket
 import threading
 import time
+import webbrowser
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 import paho.mqtt.publish as publish
 
 download_started = threading.Event()
 download_finished = threading.Event()
+esp_ip = None
+browser_opened = False
 
 class OtaRequestHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
+        global esp_ip, browser_opened
         print(f"[OTA] Serving to {self.client_address[0]}: {self.path}...")
+        if esp_ip is None and not self.client_address[0].startswith('127.'):
+            esp_ip = self.client_address[0]
+        
+        # Open the browser as soon as the manifest is requested!
+        is_manifest = self.path.endswith('manifest.json')
+        if is_manifest and esp_ip and not browser_opened:
+            print(f"[OTA] Opening Live Logs at http://{esp_ip}/", flush=True)
+            webbrowser.open(f"http://{esp_ip}/")
+            browser_opened = True
+
         is_bin = self.path.endswith('.bin')
         if is_bin:
             print(f"\n[OTA] ESP32 requested {self.path}. Streaming to flash...", flush=True)
