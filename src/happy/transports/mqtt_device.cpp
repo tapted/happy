@@ -6,18 +6,25 @@
 
 namespace HAPPY::Transports {
 
-void MqttDevice::begin(const esp_mqtt_client_config_t& mqtt_cfg) {
+EspResult<void> MqttDevice::begin(const esp_mqtt_client_config_t& mqtt_cfg) {
   // 1. Run the two-phase initialization to allocate topics safely
   Device::begin();
 
-  // 2. Initialize the ESP-IDF MQTT Client
   client_ = esp_mqtt_client_init(&mqtt_cfg);
+  if (!client_) {
+    ESP_LOGE("MqttDevice", "Failed to initialize MQTT client");
+    return ESP_ERR_NO_MEM;
+  }
 
-  // 3. Register the static event handler, passing 'this' as the context pointer
-  esp_mqtt_client_register_event(client_, MQTT_EVENT_ANY, &MqttDevice::static_event_handler, this);
+  if (EspError err = esp_mqtt_client_register_event(client_, MQTT_EVENT_ANY,
+                                                    &MqttDevice::static_event_handler, this)) {
+    return err.log("MqttDevice", "Failed to register MQTT event handler");
+  }
 
-  // 4. Start the background FreeRTOS network task
-  esp_mqtt_client_start(client_);
+  if (EspError err = esp_mqtt_client_start(client_)) {
+    return err.log("MqttDevice", "Failed to start MQTT client");
+  }
+  return ESP_OK;
 }
 
 int MqttDevice::publish(const Entity& entity) const {
@@ -38,6 +45,9 @@ void MqttDevice::static_event_handler(void* handler_args, esp_event_base_t /*bas
 // --- 3. The Object-Oriented Event Router ---
 void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
   switch (event_id) {
+    case MQTT_EVENT_BEFORE_CONNECT:
+      break;  // We're running!
+
     case MQTT_EVENT_CONNECTED:
       ESP_LOGI("MqttDevice", "Connected to Broker. Publishing Discovery...");
       on_connected();
@@ -53,11 +63,17 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
       break;
     }
 
+    // Responses to our events.
+    case MQTT_EVENT_SUBSCRIBED:
+    case MQTT_EVENT_PUBLISHED:
+      break;
+
     case MQTT_EVENT_DISCONNECTED:
       ESP_LOGW("MqttDevice", "Disconnected from Broker.");
       break;
 
     default:
+      ESP_LOGW("MqttDevice", "Unhandled MQTT Event: %d", event_id);
       break;
   }
 }

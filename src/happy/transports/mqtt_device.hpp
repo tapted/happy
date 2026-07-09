@@ -2,6 +2,7 @@
 
 #include <mqtt_client.h>
 
+#include "espbase/esp_result.hpp"
 #include "happy/device.hpp"
 
 typedef const char* esp_event_base_t;
@@ -23,7 +24,7 @@ class MqttDevice : public Device {
   //   dongley_device.begin(mqtt_cfg);
   // }
   // ```
-  void begin(const esp_mqtt_client_config_t& mqtt_cfg);
+  EspResult<void> begin(const esp_mqtt_client_config_t& mqtt_cfg);
 
   // Publish a single entity.
   int publish(const Entity& entity) const override;

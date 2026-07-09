@@ -5,6 +5,7 @@
 #include <esp_https_ota.h>
 #include <esp_log.h>
 #include <esp_system.h>
+#include <esp_wifi.h>
 #include <string>
 #include <string_view>
 
@@ -37,6 +38,7 @@ static void perform_ota(const char* url, const char* new_version_str) {
     }
 
     vTaskDelay(pdMS_TO_TICKS(1000));
+    esp_wifi_stop();
     esp_restart();
   } else {
     ESP_LOGE(TAG, "OTA Failed: %s", esp_err_to_name(ret));
