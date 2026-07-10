@@ -22,7 +22,7 @@ class OtaRequestHandler(SimpleHTTPRequestHandler):
         if esp_ip is None and not self.client_address[0].startswith('127.'):
             esp_ip = self.client_address[0]
         
-        # Open the browser as soon as the manifest is requested!
+        # Open the SPA when the manifest is pulled
         is_manifest = self.path.endswith('manifest.json')
         if is_manifest and esp_ip and not browser_opened:
             print(f"[OTA] Opening Live Logs at http://{esp_ip}/", flush=True)
@@ -30,6 +30,7 @@ class OtaRequestHandler(SimpleHTTPRequestHandler):
             browser_opened = True
 
         is_bin = self.path.endswith('.bin')
+        
         if is_bin:
             print(f"\n[OTA] ESP32 requested {self.path}. Streaming to flash...", flush=True)
             download_started.set()
