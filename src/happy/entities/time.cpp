@@ -19,20 +19,20 @@ std::string Time::get_discovery_payload() const {
 
 std::string Time::get_state_payload() const {
   char buffer[12];  // "HH:MM:SS" + null terminator
-  std::snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", hour_, minute_, second_);
+  std::snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", hour(), minute(), second());
   return std::string(buffer);
 }
 
 void Time::handle_command(std::string_view payload) {
   // Payload is "HH:MM" or "HH:MM:SS"
   if (payload.length() >= 5) {
-    std::from_chars(payload.data(), payload.data() + 2, hour_);
-    std::from_chars(payload.data() + 3, payload.data() + 5, minute_);
+    std::from_chars(payload.data(), payload.data() + 2, state_.hour_);
+    std::from_chars(payload.data() + 3, payload.data() + 5, state_.minute_);
 
     if (payload.length() >= 8) {
-      std::from_chars(payload.data() + 6, payload.data() + 8, second_);
+      std::from_chars(payload.data() + 6, payload.data() + 8, state_.second_);
     } else {
-      second_ = 0;
+      state_.second_ = 0;
     }
 
     if (config_.on_update) config_.on_update(*this);

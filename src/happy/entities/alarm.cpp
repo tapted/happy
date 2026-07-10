@@ -32,20 +32,20 @@ AlarmController::AlarmController(Device& device, uint8_t alarm_id,
       // Initialize the entities directly attached to the device registry
       time_(device, time_id_, time_name_,
             {
-                .on_update = [this](const auto& t) { this->on_update_(*this); },
+                .on_update = [this](const auto&) { this->on_update_(*this); },
             }),
 
       tone_(device, tone_id_, tone_name_,
             {
                 .icon = "mdi:music-note",
                 .options = alarm_tones,
-                .on_update = [this](const auto& t) { this->on_update_(*this); },
+                .on_update = [this](const auto&) { this->on_update_(*this); },
             }),
 
       test_btn_(device, test_id_, test_name_,
                 {
                     .icon = "mdi:play-circle-outline",
-                    .on_press = [this](const auto& btn) { this->on_test_(*this); },
+                    .on_press = [this](const auto&) { this->on_test_(*this); },
                 }) {
 }
 
