@@ -1,6 +1,8 @@
 #pragma once
 
+#include <functional>
 #include <string_view>
+
 #include "happy/entity.hpp"
 
 namespace HAPPY::Entities {
@@ -14,8 +16,7 @@ class Text : public PersistentEntity<Text, TextState> {
   struct Config {
     const char* icon = "mdi:form-textbox";
     const char* entity_category = "config";
-    void* context = nullptr;
-    void (*on_update)(void* ctx, const Text&) = nullptr;
+    std::function<void(const Text&)> on_update = nullptr;
   };
 
   Text(Device& device, std::string_view object_id, std::string_view name, Config config)
@@ -28,8 +29,12 @@ class Text : public PersistentEntity<Text, TextState> {
   void initialize_topics() override;
   void handle_command(std::string_view payload) override;
 
+  void on_change() override {
+    if (config_.on_update) config_.on_update(*this);
+  }
+
  private:
   Config config_;
 };
 
-} // namespace HAPPY::Entities
+}  // namespace HAPPY::Entities

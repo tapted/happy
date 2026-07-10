@@ -5,6 +5,10 @@
 
 namespace HAPPY::Entities {
 
+void Select::initialize_topics() {
+  initialize_base_topics(true);
+}
+
 std::string Select::get_discovery_payload() const {
   JsonDocument doc;
   JsonObjectBuilder builder(doc.get());
@@ -24,19 +28,27 @@ std::string Select::get_discovery_payload() const {
 }
 
 std::string Select::get_state_payload() const {
-  return selected_option_;  // Select state is just the plain text string
+  return std::string(get_selected());  // Select state is just the plain text string
 }
 
 void Select::handle_command(std::string_view payload) {
   // Validate the incoming payload against our allowed options
-  for (const char* opt : config_.options) {
-    if (payload == opt) {
-      selected_option_ = opt;
-      if (config_.on_update) config_.on_update(*this);
+  for (size_t i = 0; i < config_.options.size(); ++i) {
+    if (payload == config_.options[i]) {
+      state_.selected_option_index_ = i;
+      save_state();
+      on_change();
       device_.publish(*this);
-      return;
+      break;
     }
   }
 }
 
+void Select::on_change() {
+  if (state_.selected_option_index_ >= config_.options.size()) {
+    state_.selected_option_index_ = 0;  // Reset to a valid index if out of bounds
+  }
+
+  if (config_.on_update) config_.on_update(*this);
+}
 }  // namespace HAPPY::Entities

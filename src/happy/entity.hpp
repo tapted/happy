@@ -37,6 +37,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
   const std::string& get_state_topic() const { return state_topic_; }
   const std::string& get_command_topic() const { return command_topic_; }
 
+  virtual void load() {}
   virtual void initialize_topics() = 0;
   virtual std::string get_discovery_payload() const = 0;
   virtual std::string get_state_payload() const { return std::string(); }
@@ -64,13 +65,14 @@ class PersistentEntity : public Entity {
 
   using Entity::Entity;
 
-  // Returns true if the state was successfully loaded from NVS, false otherwise.
-  bool initialize_base_topics(bool expects_commands = false) {
-    Entity::initialize_base_topics(expects_commands);
+  void load() override {
     static_assert(std::is_trivially_copyable_v<StateStruct>,
                   "PersistentEntity StateStruct must be a trivially copyable POD type.");
-    return this->load_nvs_blob(&state_, sizeof(StateStruct));
+    if (this->load_nvs_blob(&state_, sizeof(StateStruct))) {
+      this->on_change();
+    }
   }
+  virtual void on_change() = 0;
 
   void save_state() const { this->save_nvs_blob(&state_, sizeof(StateStruct)); }
 };

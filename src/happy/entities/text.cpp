@@ -24,8 +24,7 @@ std::string Text::get_state_payload() const {
 }
 
 void Text::initialize_topics() {
-  bool loaded_from_nvs = initialize_base_topics(true);
-  if (loaded_from_nvs && config_.on_update) config_.on_update(config_.context, *this);
+  initialize_base_topics(true);
 }
 
 void Text::handle_command(std::string_view payload) {
@@ -33,11 +32,8 @@ void Text::handle_command(std::string_view payload) {
   std::ranges::copy(payload, state_.value);
   state_.value[sizeof(state_.value) - 1] = '\0';
 
-  this->save_state();
-
-  if (config_.on_update) {
-    config_.on_update(config_.context, *this);
-  }
+  save_state();
+  on_change();
 }
 
 }  // namespace HAPPY::Entities

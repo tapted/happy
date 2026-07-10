@@ -42,6 +42,12 @@ class Device {
   // --- Registry Implementation ---
   void register_entity(Entity* entity);
   virtual int publish(const Entity& entity) const = 0;
+
+  // Loads all entities from NVS. This is called automatically by begin() but can be called
+  // manually if you want to load the state before initializing topics.
+  void load();
+  
+  // Initializes all entities and their topics. This should be called after the transport is ready.
   void begin();
 
   // Parses JSON and routes it to the matching entity
@@ -50,6 +56,7 @@ class Device {
  protected:
   Config config_;
   Core::IntrusiveList<Entity> entities_;
+  bool loaded_ = false;
 };
 
 }  // namespace HAPPY

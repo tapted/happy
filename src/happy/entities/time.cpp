@@ -6,6 +6,10 @@
 
 namespace HAPPY::Entities {
 
+void Time::initialize_topics() {
+  initialize_base_topics(true);
+}
+
 std::string Time::get_discovery_payload() const {
   JsonDocument doc;
   JsonObjectBuilder builder(doc.get());
@@ -35,7 +39,8 @@ void Time::handle_command(std::string_view payload) {
       state_.second_ = 0;
     }
 
-    if (config_.on_update) config_.on_update(*this);
+    save_state();
+    on_change();
     device_.publish(*this);
   }
 }

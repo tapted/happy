@@ -24,7 +24,16 @@ void Device::register_entity(HAPPY::Entity* entity) {
   // Note: entity might not be fully initialized yet.
 }
 
+void Device::load() {
+  if (loaded_) return;
+  loaded_ = true;
+  for (Entity& entity : entities_) {
+    entity.load();
+  }
+}
+
 void Device::begin() {
+  load();
   for (Entity& entity : entities_) {
     entity.initialize_topics();
   }

@@ -6,7 +6,11 @@
 
 namespace HAPPY::Entities {
 
-class Select : public Entity {
+struct SelectState {
+  size_t selected_option_index_ = 0;
+};
+
+class Select : public PersistentEntity<Select, SelectState> {
  public:
   struct Config {
     const char* icon = "mdi:format-list-bulleted";
@@ -16,23 +20,22 @@ class Select : public Entity {
   };
 
   Select(Device& device, std::string_view object_id, std::string_view name, Config config)
-      : Entity(device, "select", object_id, name), config_(std::move(config)) {
-    // Default to the first option if available
-    if (!config_.options.empty()) {
-      selected_option_ = config_.options.front();
-    }
+      : PersistentEntity(device, "select", object_id, name), config_(std::move(config)) {}
+
+  bool empty() const { return config_.options.empty(); }
+  std::string_view get_selected() const {
+    return empty() ? "" : config_.options[state_.selected_option_index_];
   }
 
-  std::string_view get_selected() const { return selected_option_; }
-
-  void initialize_topics() override { initialize_base_topics(true); }
+  void initialize_topics() override;
   std::string get_discovery_payload() const override;
   std::string get_state_payload() const override;
   void handle_command(std::string_view payload) override;
+  void on_change() override;
 
  private:
   Config config_;
-  std::string selected_option_;  // Safe to allocate once per selection change
+  SelectState state_;
 };
 
 }  // namespace HAPPY::Entities

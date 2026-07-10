@@ -64,6 +64,9 @@ class Light : public PersistentEntity<Light, LightState> {
   std::string get_state_payload() const override;
   void initialize_topics() override;
   void handle_command(const std::string_view payload) override;
+  void on_change() override {
+    if (config_.on_update) config_.on_update(*this);
+  }
 
  private:
   Config config_;

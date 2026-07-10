@@ -44,13 +44,7 @@ std::string Light::get_state_payload() const {
 }
 
 void Light::initialize_topics() {
-  bool loaded_from_nvs = initialize_base_topics(true);
-  ESP_LOGD("Light",
-           "Initialized topics for %s (loaded_from_nvs=%d): discovery=%s, state=%s, command=%s, "
-           "state_payload=%s",
-           object_id_.data(), loaded_from_nvs, discovery_topic_.c_str(), state_topic_.c_str(),
-           command_topic_.c_str(), get_state_payload().c_str());
-  if (loaded_from_nvs && config_.on_update) config_.on_update(*this);
+  initialize_base_topics(true);
 }
 
 void Light::handle_command(const std::string_view payload) {
@@ -78,6 +72,6 @@ void Light::handle_command(const std::string_view payload) {
   if (!state_changed) return;
   publish();
   save_state();
-  if (config_.on_update) config_.on_update(*this);
+  on_change();
 }
 }  // namespace HAPPY::Entities
