@@ -28,20 +28,18 @@ std::string Time::get_state_payload() const {
 }
 
 void Time::handle_command(std::string_view payload) {
+  auto state = this->state();
   // Payload is "HH:MM" or "HH:MM:SS"
   if (payload.length() >= 5) {
-    std::from_chars(payload.data(), payload.data() + 2, state_.hour_);
-    std::from_chars(payload.data() + 3, payload.data() + 5, state_.minute_);
+    std::from_chars(payload.data(), payload.data() + 2, state.hour_);
+    std::from_chars(payload.data() + 3, payload.data() + 5, state.minute_);
 
     if (payload.length() >= 8) {
-      std::from_chars(payload.data() + 6, payload.data() + 8, state_.second_);
+      std::from_chars(payload.data() + 6, payload.data() + 8, state.second_);
     } else {
-      state_.second_ = 0;
+      state.second_ = 0;
     }
-
-    save_state();
-    on_change();
-    device_.publish(*this);
+    set_state(state);
   }
 }
 

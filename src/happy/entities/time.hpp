@@ -22,9 +22,9 @@ class Time : public  PersistentEntity<Time, TimeState> {
   Time(Device& device, std::string_view object_id, std::string_view name, Config config)
       : PersistentEntity(device, "time", object_id, name), config_(std::move(config)) {}
 
-  uint8_t hour() const { return state_.hour_; }
-  uint8_t minute() const { return state_.minute_; }
-  uint8_t second() const { return state_.second_; }
+  uint8_t hour() const { return state().hour_; }
+  uint8_t minute() const { return state().minute_; }
+  uint8_t second() const { return state().second_; }
 
   void initialize_topics() override;
   std::string get_discovery_payload() const override;

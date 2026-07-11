@@ -32,12 +32,12 @@ std::string Light::get_state_payload() const {
   JsonDocument doc;
   JsonObjectBuilder builder(doc.get());
 
-  builder.set("state", state_.is_on ? "ON" : "OFF");
-  builder.set("brightness", state_.brightness);
+  builder.set("state", state().is_on ? "ON" : "OFF");
+  builder.set("brightness", state().brightness);
   builder.with_object("color", [&](auto& color) {
-    color.set("r", state_.r);
-    color.set("g", state_.g);
-    color.set("b", state_.b);
+    color.set("r", state().r);
+    color.set("g", state().g);
+    color.set("b", state().b);
   });
 
   return doc.to_string();
@@ -54,24 +54,20 @@ void Light::handle_command(const std::string_view payload) {
   JsonNodeView root(root_ptr.get());
   if (!root) return;
 
-  bool state_changed = false;
+  auto state = this->state();
 
-  state_changed |= root.change(state_.is_on, "state", [](auto s) { return s == "ON"; });
-  state_changed |= root.change(state_.brightness, "brightness");
+  root.change(state.is_on, "state", [](auto s) { return s == "ON"; });
+  root.change(state.brightness, "brightness");
   if (auto color = root["color"]) {
-    state_changed |= color.change(state_.r, "r");
-    state_changed |= color.change(state_.g, "g");
-    state_changed |= color.change(state_.b, "b");
+    color.change(state.r, "r");
+    color.change(state.g, "g");
+    color.change(state.b, "b");
   }
 
   ESP_LOGD("Light", "Command received for %s: %.*s", object_id_.data(),
            static_cast<int>(payload.length()), payload.data());
-  ESP_LOGD("Light", "New state: is_on=%d, brightness=%d, r=%d, g=%d, b=%d (changed=%d)",
-           state_.is_on, state_.brightness, state_.r, state_.g, state_.b, state_changed);
-
-  if (!state_changed) return;
-  publish();
-  save_state();
-  on_change();
+  ESP_LOGD("Light", "New state: is_on=%d, brightness=%d, r=%d, g=%d, b=%d", state.is_on,
+           state.brightness, state.r, state.g, state.b);
+  set_state(state);
 }
 }  // namespace HAPPY::Entities

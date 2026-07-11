@@ -20,7 +20,7 @@ std::string Text::get_discovery_payload() const {
 }
 
 std::string Text::get_state_payload() const {
-  return state_.value;
+  return state().value;
 }
 
 void Text::initialize_topics() {
@@ -28,12 +28,11 @@ void Text::initialize_topics() {
 }
 
 void Text::handle_command(std::string_view payload) {
-  std::ranges::fill(state_.value, '\0');
-  std::ranges::copy(payload, state_.value);
-  state_.value[sizeof(state_.value) - 1] = '\0';
-
-  save_state();
-  on_change();
+  auto state = this->state();
+  std::ranges::fill(state.value, '\0');
+  std::ranges::copy(payload, state.value);
+  state.value[sizeof(state.value) - 1] = '\0';
+  set_state(state);
 }
 
 }  // namespace HAPPY::Entities

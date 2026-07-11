@@ -141,7 +141,7 @@ OtaController::OtaController(Device& device, const char* base_version)
                                },
                            }) {
   // Load the dynamically installed version from NVS if it exists.
-  auto store = NvsStore::open("happy_ota", NVS_READONLY);
+  auto store = NvsStore::open("ha_ota", NVS_READONLY);
   if (store) {
     char buf[64]{};
     if (store->get_string("version", buf, sizeof(buf))) {

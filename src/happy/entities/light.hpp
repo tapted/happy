@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
 
 #include "happy/entity.hpp"
 
@@ -47,17 +46,17 @@ class Light : public PersistentEntity<Light, LightState> {
         config_(std::move(config)) {}
 
   // --- State Accessors ---
-  bool is_on() const { return state_.is_on; }
-  uint8_t brightness() const { return state_.brightness; }
-  RgbColor raw_rgb() const { return {state_.r, state_.g, state_.b}; }
+  bool is_on() const { return state().is_on; }
+  uint8_t brightness() const { return state().brightness; }
+  RgbColor raw_rgb() const { return {state().r, state().g, state().b}; }
 
   // Computes the final RGB output. If OFF, returns {0,0,0}.
   RgbColor scaled_rgb() const {
-    if (!state_.is_on) return {0, 0, 0};
+    if (!state().is_on) return {0, 0, 0};
     return {
-        static_cast<uint32_t>((state_.r * state_.brightness) / 255),
-        static_cast<uint32_t>((state_.g * state_.brightness) / 255),
-        static_cast<uint32_t>((state_.b * state_.brightness) / 255),
+        static_cast<uint32_t>((state().r * state().brightness) / 255),
+        static_cast<uint32_t>((state().g * state().brightness) / 255),
+        static_cast<uint32_t>((state().b * state().brightness) / 255),
     };
   }
   std::string get_discovery_payload() const override;

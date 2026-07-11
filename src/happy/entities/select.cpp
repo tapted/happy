@@ -35,18 +35,17 @@ void Select::handle_command(std::string_view payload) {
   // Validate the incoming payload against our allowed options
   for (size_t i = 0; i < config_.options.size(); ++i) {
     if (payload == config_.options[i]) {
-      state_.selected_option_index_ = i;
-      save_state();
-      on_change();
-      device_.publish(*this);
+      set_state({.selected_option_index_ = i});
       break;
     }
   }
 }
 
 void Select::on_change() {
-  if (state_.selected_option_index_ >= config_.options.size()) {
-    state_.selected_option_index_ = 0;  // Reset to a valid index if out of bounds
+  const size_t new_index = state().selected_option_index_;
+  if (new_index != 0 && new_index >= config_.options.size()) {
+    set_state({.selected_option_index_ = 0});  // Reset to a valid index if out of bounds
+    return;  // Expect a recursive call.
   }
 
   if (config_.on_update) config_.on_update(*this);

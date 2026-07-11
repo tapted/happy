@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <string>
 #include <string_view>
 
@@ -60,9 +61,10 @@ class Entity : public Core::IntrusiveNode<Entity> {
 // and can be saved back to NVS when needed.
 template <typename Derived, typename StateStruct>
 class PersistentEntity : public Entity {
- protected:
-  StateStruct state_{};
+ public:
+  const StateStruct& state() const { return state_; }
 
+ protected:
   using Entity::Entity;
 
   void load() override {
@@ -74,7 +76,18 @@ class PersistentEntity : public Entity {
   }
   virtual void on_change() = 0;
 
-  void save_state() const { this->save_nvs_blob(&state_, sizeof(StateStruct)); }
+  void set_state(StateStruct new_state) {
+    if (std::memcmp(&state_, &new_state, sizeof(StateStruct)) == 0) {
+      return;  // No change in state, do nothing
+    }
+    state_ = new_state;
+    this->save_nvs_blob(&state_, sizeof(StateStruct));
+    this->publish();
+    this->on_change();
+  }
+
+ private:
+  StateStruct state_{};
 };
 
 }  // namespace HAPPY
