@@ -24,7 +24,7 @@ class Select : public PersistentEntity<Select, SelectState> {
 
   bool empty() const { return config_.options.empty(); }
   std::string_view get_selected() const {
-    return empty() ? "" : config_.options[state_.selected_option_index_];
+    return empty() ? "" : config_.options[state().selected_option_index_];
   }
 
   void initialize_topics() override;
@@ -35,7 +35,6 @@ class Select : public PersistentEntity<Select, SelectState> {
 
  private:
   Config config_;
-  SelectState state_;
 };
 
 }  // namespace HAPPY::Entities

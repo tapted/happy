@@ -2,6 +2,7 @@
 #include "happy/entities/select.hpp"
 
 #include "espbase/json.h"
+#include <esp_log.h>
 
 namespace HAPPY::Entities {
 
@@ -42,6 +43,7 @@ void Select::handle_command(std::string_view payload) {
 }
 
 void Select::on_change() {
+  ESP_LOGI("Select", "State changed for %s: %s", object_id_.data(), get_state_payload().c_str());
   const size_t new_index = state().selected_option_index_;
   if (new_index != 0 && new_index >= config_.options.size()) {
     set_state({.selected_option_index_ = 0});  // Reset to a valid index if out of bounds
