@@ -32,6 +32,7 @@ class Device {
   };
 
   explicit constexpr Device(const Config& config) : config_(config) {}
+  virtual ~Device() = default;
 
   const char* get_identifier() const { return config_.identifiers; }
   const char* get_name() const { return config_.name; }

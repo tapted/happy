@@ -13,6 +13,7 @@ class MqttDevice : public Device {
  public:
   // Inherit the Device constructor
   using Device::Device;
+  virtual ~MqttDevice();
 
   // Start the MQTT client with the given configuration and publish initial states. E.g.:
   // ```cpp

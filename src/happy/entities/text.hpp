@@ -22,6 +22,12 @@ class Text : public PersistentEntity<Text, TextState> {
   Text(Device& device, std::string_view object_id, std::string_view name, Config config)
       : PersistentEntity(device, "text", object_id, name), config_(config) {}
 
+  void set_value(std::string_view new_value) {
+    TextState new_state = state();
+    snprintf(new_state.value, sizeof(new_state.value), "%.*s", (int)new_value.size(),
+             new_value.data());
+    set_state(new_state);
+  }
   std::string_view get_value() const { return state().value; }
 
   std::string get_discovery_payload() const override;

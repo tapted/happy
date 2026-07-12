@@ -6,6 +6,13 @@
 
 namespace HAPPY::Transports {
 
+MqttDevice::~MqttDevice() {
+  if (client_) {
+    esp_mqtt_client_stop(client_);
+    esp_mqtt_client_destroy(client_);
+  }
+}
+
 EspResult<void> MqttDevice::begin(const esp_mqtt_client_config_t& mqtt_cfg) {
   // 1. Run the two-phase initialization to allocate topics safely
   Device::begin();
@@ -28,6 +35,9 @@ EspResult<void> MqttDevice::begin(const esp_mqtt_client_config_t& mqtt_cfg) {
 }
 
 int MqttDevice::publish(const Entity& entity) const {
+  if (!client_) {
+    return ESP_ERR_INVALID_STATE;
+  }
   std::string payload = entity.get_state_payload();
   return mqtt_enqueue(entity.get_state_topic().c_str(), payload.c_str());
 }
