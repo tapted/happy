@@ -39,6 +39,7 @@ static void perform_ota(const char* url, const char* new_version_str) {
 
     ESP_LOGI(TAG, "OTA Success! Rebooting...");
     vTaskDelay(pdMS_TO_TICKS(1000));
+    esp_wifi_disconnect();
     esp_wifi_stop();
     esp_restart();
   } else {
