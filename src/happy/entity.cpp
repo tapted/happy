@@ -16,8 +16,8 @@ void Entity::initialize_base_topics(bool expects_commands) {
            static_cast<int>(object_id_.length()), object_id_.data());
   discovery_topic_ = buf;
 
-  snprintf(buf, sizeof(buf), "%.*s/state", static_cast<int>(object_id_.length()),
-           object_id_.data());
+  snprintf(buf, sizeof(buf), "%s/%.*s/state", device_.get_identifier(),
+           static_cast<int>(object_id_.length()), object_id_.data());
   state_topic_ = buf;
 
   if (expects_commands) {
