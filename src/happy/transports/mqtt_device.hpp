@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <mqtt_client.h>
 
 #include "espbase/esp_result.hpp"
@@ -32,8 +33,14 @@ class MqttDevice : public Device {
 
   esp_mqtt_client_handle_t get_client() const { return client_; }
 
+  // Returns true ONLY if the connection has finished and all ACKs are received.
+  bool is_idle() const { return pending_acks_.load(std::memory_order_acquire) <= 0; }
+
  private:
   esp_mqtt_client_handle_t client_ = nullptr;
+
+  // Start at 1 so the device isn't considered idle while it is still trying to connect.
+  mutable std::atomic<int> pending_acks_{1};
 
   static void static_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id,
                                    void* event_data);

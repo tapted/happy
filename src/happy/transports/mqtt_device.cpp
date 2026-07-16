@@ -73,9 +73,11 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
       break;
     }
 
-    // Responses to our events.
     case MQTT_EVENT_SUBSCRIBED:
     case MQTT_EVENT_PUBLISHED:
+      // A message or subscription has been successfully acknowledged by the broker!
+      pending_acks_.fetch_sub(1, std::memory_order_release);
+      ESP_LOGD("MqttDevice", "ACK received. Pending operations: %d", pending_acks_.load());
       break;
 
     case MQTT_EVENT_DISCONNECTED:
@@ -94,30 +96,37 @@ void MqttDevice::on_connected() {
   for (Entity& entity : entities_) {
     // 1. Publish the JSON Discovery Payload (Retained = true)
     std::string payload = entity.get_discovery_payload();
-    ESP_LOGD("MqttDevice", "Publishing Discovery for %s: %s", entity.get_discovery_topic().c_str(),
-             payload.c_str());
     mqtt_publish(entity.get_discovery_topic().c_str(), payload.c_str());
 
     // 2. Subscribe to the command topic if the entity has one (e.g., Lights, Switches)
     if (!entity.get_command_topic().empty()) {
-      ESP_LOGD("MqttDevice", "Subscribing to command topic: %s",
-               entity.get_command_topic().c_str());
-      esp_mqtt_client_subscribe_single(client_, entity.get_command_topic().c_str(), 1);
+      int msg_id = esp_mqtt_client_subscribe_single(client_, entity.get_command_topic().c_str(), 1);
+      if (msg_id > 0) pending_acks_.fetch_add(1, std::memory_order_relaxed);
     }
   }
 
   for (const Entity& entity : entities_) {
     publish(entity);
   }
+
+  // THE INITIALIZATION LOCK RELEASE
+  // We have finished enqueuing all discovery and state packets.
+  // We remove the +1 lock we set in the constructor.
+  // Once the ACKs for the packets we just queued come back, the counter will hit 0!
+  pending_acks_.fetch_sub(1, std::memory_order_release);
 }
 
 int MqttDevice::mqtt_publish(const char* topic, const char* payload, int qos, int retain) const {
-  return esp_mqtt_client_publish(client_, topic, payload, 0, qos, retain);
+  int msg_id = esp_mqtt_client_publish(client_, topic, payload, 0, qos, retain);
+  if (msg_id > 0) pending_acks_.fetch_add(1, std::memory_order_relaxed);
+  return msg_id;
 }
 
 int MqttDevice::mqtt_enqueue(const char* topic, const char* payload, int qos, int retain,
                              bool store) const {
-  return esp_mqtt_client_enqueue(client_, topic, payload, 0, qos, retain, store);
+  int msg_id = esp_mqtt_client_enqueue(client_, topic, payload, 0, qos, retain, store);
+  if (msg_id > 0) pending_acks_.fetch_add(1, std::memory_order_relaxed);
+  return msg_id;
 }
 
 }  // namespace HAPPY::Transports
