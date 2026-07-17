@@ -24,6 +24,12 @@ void Device::register_entity(HAPPY::Entity* entity) {
   // Note: entity might not be fully initialized yet.
 }
 
+void Device::republish_all() const {
+  for (const Entity& entity : entities_) {
+    publish(entity);
+  }
+}
+
 void Device::load() {
   if (loaded_) return;
   loaded_ = true;
