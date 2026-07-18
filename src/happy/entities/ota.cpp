@@ -14,7 +14,8 @@
 
 namespace HAPPY::Entities {
 
-static constexpr const char* TAG = "HAPPY_OTA";
+static constexpr char TAG[] = "HAPPY_OTA";
+static constexpr char NAMESPACE[] = "ha_ota";
 
 static void perform_ota(const char* url, const char* new_version_str) {
   ESP_LOGI(TAG, "Downloading firmware: %s (version: %s)", url, new_version_str);
@@ -31,7 +32,7 @@ static void perform_ota(const char* url, const char* new_version_str) {
     ESP_LOGI(TAG, "OTA Success! Saving new version %s to NVS...", new_version_str);
 
     // Save the dynamic version so it survives the reboot
-    auto store = NvsStore::open("ha_ota", NVS_READWRITE);
+    auto store = NvsStore::open(NAMESPACE, NVS_READWRITE);
     if (store) {
       store->set_string("version", new_version_str);
       store->commit();
@@ -61,7 +62,7 @@ void OtaController::ota_step(EspTask<OtaController>& task) {
   const char* scheme = host.find("://") != std::string::npos ? "" : "http://";
   const char* slash = host.ends_with('/') ? "" : "/";
   std::string manifest_url = scheme + host + slash + "manifest.json";
-  ESP_LOGI(TAG, "Fetching manifest from: %s", manifest_url.c_str());
+  ESP_LOGI(TAG, "Fetching manifest[%s] from: %s", proj.c_str(), manifest_url.c_str());
 
   esp_http_client_config_t config{};
   config.url = manifest_url.c_str();
@@ -142,7 +143,7 @@ OtaController::OtaController(Device& device, const char* base_version)
                                },
                            }) {
   // Load the dynamically installed version from NVS if it exists.
-  auto store = NvsStore::open("ha_ota", NVS_READONLY);
+  auto store = NvsStore::open(NAMESPACE, NVS_READONLY);
   if (store) {
     char buf[64]{};
     if (store->get_string("version", buf, sizeof(buf))) {
