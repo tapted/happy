@@ -1,16 +1,41 @@
 #include "happy/entities/system_diagnostics.hpp"
 
+#include <driver/temperature_sensor.h>
 #include <esp_app_desc.h>
 #include <esp_heap_caps.h>
 #include <esp_image_format.h>
+#include <esp_netif.h>
 #include <esp_ota_ops.h>
 #include <esp_system.h>
 #include <esp_timer.h>
+#include <string>
 #include <sys/statvfs.h>
 #include <sys/time.h>
 #include <time.h>
 
-// --- ESP-IDF Data Fetchers ---
+#include "espbase/esp_result.hpp"
+
+static std::string get_temperature_celsius() {
+  static auto sensor = []() -> EspResult<temperature_sensor_handle_t> {
+    temperature_sensor_handle_t temp_handle;
+    temperature_sensor_config_t temp_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(10, 50);
+    if (EspError err = temperature_sensor_install(&temp_config, &temp_handle)) {
+      return err.log("TempSensor", "Failed to install temperature sensor");
+    }
+    if (EspError err = temperature_sensor_enable(temp_handle)) {
+      return err.log("TempSensor", "Failed to enable temperature sensor");
+    }
+    return temp_handle;
+  }();
+  if (sensor) {
+    float temp_c;
+    if (temperature_sensor_get_celsius(*sensor, &temp_c) == ESP_OK) {
+      return std::to_string(temp_c);
+    }
+  }
+  return "unknown";
+}
+
 static const char* get_reset_reason_str() {
   switch (esp_reset_reason()) {
     case ESP_RST_UNKNOWN:
@@ -70,6 +95,25 @@ static std::string get_boot_time_iso() {
   return std::string(buf);
 }
 
+static std::string get_ip_address() {
+  // 1. Grab the default Wi-Fi Station network interface
+  esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
+  if (!netif) {
+    return "Not Connected";
+  }
+
+  // 2. Request the IP configuration struct for this interface
+  esp_netif_ip_info_t ip_info;
+  if (esp_netif_get_ip_info(netif, &ip_info) == ESP_OK) {
+    // 3. Convert the raw 32-bit IP into a human-readable string
+    char ip_str[IP4ADDR_STRLEN_MAX];
+    esp_ip4addr_ntoa(&ip_info.ip, ip_str, IP4ADDR_STRLEN_MAX);
+    return std::string(ip_str);
+  }
+
+  return "0.0.0.0";
+}
+
 namespace HAPPY::Entities {
 
 SystemDiagnostics::SystemDiagnostics(Device& device)
@@ -77,12 +121,12 @@ SystemDiagnostics::SystemDiagnostics(Device& device)
                  {
                      .device_class = "timestamp",
                      .icon = "mdi:clock-start",
-                     .get_value = []() { return get_boot_time_iso(); },
+                     .get_value = get_boot_time_iso,
                  }),
       reboot_reason_(device, "reboot_reason", "Reboot Reason",
                      {
                          .icon = "mdi:restart",
-                         .get_value = []() { return get_reset_reason_str(); },
+                         .get_value = get_reset_reason_str,
                      }),
       compile_date_(device, "compile_date", "Firmware Build",
                     {
@@ -161,7 +205,16 @@ SystemDiagnostics::SystemDiagnostics(Device& device)
                            }
                            return "unknown";
                          },
-                     }) {
+                     }),
+      ip_address_(device, "ip_address", "IP Address",
+                  {.icon = "mdi:ip-network", .get_value = get_ip_address}),
+      temperature_(device, "temperature", "Temperature (Celsius)",
+                   {
+                       .device_class = "temperature",
+                       .unit_of_measurement = "°C",
+                       .icon = "mdi:thermometer",
+                       .get_value = get_temperature_celsius,
+                   }) {
 }
 
 void SystemDiagnostics::publish_all() const {
@@ -173,6 +226,8 @@ void SystemDiagnostics::publish_all() const {
   firmware_size_.publish();
   ota_partition_size_.publish();
   fs_used_space_.publish();
+  ip_address_.publish();
+  temperature_.publish();
 }
 
 }  // namespace HAPPY::Entities

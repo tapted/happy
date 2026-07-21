@@ -21,6 +21,8 @@ class SystemDiagnostics {
   Sensor firmware_size_;
   Sensor ota_partition_size_;
   Sensor fs_used_space_;
+  Sensor ip_address_;
+  Sensor temperature_;
 };
 
 }  // namespace HAPPY::Entities
