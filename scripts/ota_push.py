@@ -26,7 +26,7 @@ class OtaRequestHandler(SimpleHTTPRequestHandler):
         is_manifest = self.path.endswith('manifest.json')
         if is_manifest and esp_ip and not browser_opened:
             print(f"[OTA] Opening Live Logs at http://{esp_ip}/", flush=True)
-            webbrowser.open(f"http://{esp_ip}/")
+            webbrowser.open(f"http://{esp_ip}/logs/")
             browser_opened = True
 
         is_bin = self.path.endswith('.bin')
