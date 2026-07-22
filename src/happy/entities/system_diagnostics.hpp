@@ -1,6 +1,5 @@
 #pragma once
 
-#include "happy/device.hpp"
 #include "happy/entities/sensor.hpp"
 
 namespace HAPPY::Entities {

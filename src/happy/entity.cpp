@@ -6,8 +6,21 @@
 
 #include "espbase/json.h"
 #include "espbase/nvs_store.hpp"
+#include "happy/device.hpp"
+
 
 namespace HAPPY {
+
+Entity::Entity(Device& device, std::string_view domain, std::string_view object_id,
+               std::string_view name)
+    : device_(device), domain_(domain), object_id_(object_id), name_(name) {
+  // Register the entity with the device upon construction. This means the constructors can't be
+  // constexpr/constinit. But the registration structs do not require a heap allocation, so this
+  // is still safe for static initialization.
+  device_.register_entity(this);
+}
+
+void Entity::publish() const { device_.publish(*this); }
 
 void Entity::initialize_base_topics(bool expects_commands) {
   char buf[128];

@@ -1,6 +1,7 @@
 #include "happy/entities/sensor.hpp"
 
 #include "espbase/json.h"
+#include "happy/device.hpp"
 
 namespace HAPPY::Entities {
 

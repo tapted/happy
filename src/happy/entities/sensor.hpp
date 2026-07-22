@@ -14,8 +14,10 @@ class Sensor : public Entity {
     const char* unit_of_measurement = nullptr;
     const char* icon = nullptr;
     const char* entity_category = "diagnostic";  // Default to diagnostic
+    // TODO: Add a "state_class" field for sensors that have a state class.
 
     // The lambda that fetches the real-time value
+    // TODO: Make this a regular function pointer so configs can be constexpr.
     std::function<std::string()> get_value = nullptr;
   };
 
