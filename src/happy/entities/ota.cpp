@@ -139,7 +139,7 @@ OtaController::OtaController(Device& device, const char* base_version)
                                .icon = "mdi:tag-outline",
                                .get_value = []() -> std::string {
                                  const esp_app_desc_t* desc = esp_app_get_description();
-                                 return desc ? desc->version : "unknown";
+                                 return desc ? buf2str(desc->version) : "unknown";
                                },
                            }) {
   // Load the dynamically installed version from NVS if it exists.

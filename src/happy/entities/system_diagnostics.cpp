@@ -76,6 +76,21 @@ static const char* get_reset_reason_str() {
   }
 }
 
+static std::string get_firmware_size_once() {
+  static std::string firmware_size = []() -> std::string {
+    const esp_partition_t* running = esp_ota_get_running_partition();
+    if (!running) return "unknown";
+
+    esp_image_metadata_t data;
+    const esp_partition_pos_t pos = {.offset = running->address, .size = running->size};
+    if (esp_image_get_metadata(&pos, &data) == ESP_OK) {
+      return std::to_string(data.image_len);
+    }
+    return "unknown";
+  }();
+  return firmware_size;
+}
+
 static std::string get_boot_time_iso() {
   time_t now;
   time(&now);
@@ -109,7 +124,7 @@ static std::string get_ip_address() {
     // 3. Convert the raw 32-bit IP into a human-readable string
     char ip_str[IP4ADDR_STRLEN_MAX];
     esp_ip4addr_ntoa(&ip_info.ip, ip_str, IP4ADDR_STRLEN_MAX);
-    return std::string(ip_str);
+    return HAPPY::buf2str(ip_str);
   }
 
   return "0.0.0.0";
@@ -136,7 +151,8 @@ SystemDiagnostics::SystemDiagnostics(Device& device)
                             []() {
                               const esp_app_desc_t* desc = esp_app_get_description();
                               char buf[64];
-                              snprintf(buf, sizeof(buf), "%s %s UTC", desc->date, desc->time);
+                              snprintf(buf, sizeof(buf), "%.*s %.*s UTC", sizeof(desc->date),
+                                       desc->date, sizeof(desc->time), desc->time);
                               return std::string(buf);
                             },
                     }),
@@ -163,21 +179,7 @@ SystemDiagnostics::SystemDiagnostics(Device& device)
                          .device_class = "data_size",
                          .unit_of_measurement = "B",
                          .icon = "mdi:file-code-outline",
-                         .get_value = []() -> std::string {
-                           const esp_partition_t* running = esp_ota_get_running_partition();
-                           if (!running) return "unknown";
-
-                           esp_image_metadata_t data;
-                           const esp_partition_pos_t pos = {
-                               .offset = running->address,
-                               .size = running->size,
-                           };
-
-                           if (esp_image_get_metadata(&pos, &data) == ESP_OK) {
-                             return std::to_string(data.image_len);
-                           }
-                           return "unknown";
-                         },
+                         .get_value = get_firmware_size_once,
                      }),
 
       ota_partition_size_(device, "ota_partition_size", "OTA Partition Size",

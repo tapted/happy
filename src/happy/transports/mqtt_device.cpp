@@ -82,6 +82,11 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
 
     case MQTT_EVENT_DISCONNECTED:
       ESP_LOGW("MqttDevice", "Disconnected from Broker.");
+      // Re-apply the lock so is_idle() returns false while disconnected.
+      // We check if it's already > 0 to prevent stacking locks on rapid disconnects.
+      if (pending_acks_.load(std::memory_order_acquire) <= 0) {
+        pending_acks_.fetch_add(1, std::memory_order_release);
+      }
       break;
 
     default:

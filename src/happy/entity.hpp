@@ -10,6 +10,11 @@
 namespace HAPPY {
 class Device;
 
+template <size_t N>
+std::string buf2str(const char (&buf)[N]) {
+  return std::string(buf, strnlen(buf, N));
+}
+
 class Entity : public Core::IntrusiveNode<Entity> {
  protected:
   Device& device_;  // Non-const to allow registration
@@ -25,7 +30,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
   Entity(Device& device, std::string_view domain, std::string_view object_id, std::string_view name);
 
   void publish() const;
-  
+
   virtual ~Entity() = default;
 
   const std::string& get_discovery_topic() const { return discovery_topic_; }
