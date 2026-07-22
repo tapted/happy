@@ -46,22 +46,30 @@ void MqttDevice::static_event_handler(void* handler_args, esp_event_base_t /*bas
   instance->handle_event(event_id, event);
 }
 
-int MqttDevice::pump_queue(bool bypass_idle_check) {
-  // If the outbox is busy, or we are disconnected, do nothing.
-  if (!bypass_idle_check && !is_idle()) return -1;
-  
-  // Loop through all entities to find the next pending action.
+int MqttDevice::pump_queue(bool is_ack_resolution) {
+  // Define your maximum packets in flight (sliding window size)
+  constexpr int MAX_IN_FLIGHT = 1;
+  int num_published = 0;
+
   for (Entity& entity : entities_) {
-    // 1. Prioritize Discovery
+    // 1. Evaluate the real-time window capacity
+    int current_in_flight = pending_acks_.load(std::memory_order_acquire);
+
+    // If we are currently handling an ACK, one of those in-flight locks is about to be released
+    // immediately after this function returns. We account for it to maximize our window.
+    if (is_ack_resolution) current_in_flight -= 1;
+
+    // If the window is full (or permanently locked by a disconnect), stop pumping.
+    if (current_in_flight >= MAX_IN_FLIGHT) return num_published;
+
+    // 2. Dispatch the next highest-priority action
     if (entity.get_pending_flags() & Entity::FLAG_DISCOVERY) {
       entity.clear_flag(Entity::FLAG_DISCOVERY);
-      std::string payload = entity.get_discovery_payload();
-      mqtt_publish(entity.get_discovery_topic().c_str(), payload.c_str(), 1, 1);
-      return 0;  // Stop and wait for the ACK
-    }
+      // mqtt_publish automatically increments pending_acks_ under the hood
+      mqtt_publish(entity.get_discovery_topic().c_str(), entity.get_discovery_payload().c_str(), 1,
+                   1);
 
-    // 2. Then Subscriptions
-    if (entity.get_pending_flags() & Entity::FLAG_SUBSCRIBE) {
+    } else if (entity.get_pending_flags() & Entity::FLAG_SUBSCRIBE) {
       entity.clear_flag(Entity::FLAG_SUBSCRIBE);
       int msg_id = esp_mqtt_client_subscribe_single(client_, entity.get_command_topic().c_str(), 1);
       if (msg_id > 0) {
@@ -72,19 +80,16 @@ int MqttDevice::pump_queue(bool bypass_idle_check) {
       } else if (msg_id == -1) {
         ESP_LOGW(TAG, "Failed to subscribe to topic: %s", entity.get_command_topic().c_str());
       }
-      return 0;  // Stop and wait for the ACK
+
+    } else if (entity.get_pending_flags() & Entity::FLAG_STATE) {
+      entity.clear_flag(Entity::FLAG_STATE);
+      // Pushing state data at QoS 0 bypasses the outbox queue entirely
+      mqtt_publish(entity.get_state_topic().c_str(), entity.get_state_payload().c_str(), 0, 0);
     }
 
-    // 3. Finally, State Publishing
-    if (entity.get_pending_flags() & Entity::FLAG_STATE) {
-      entity.clear_flag(Entity::FLAG_STATE);
-      std::string payload = entity.get_state_payload();
-      mqtt_publish(entity.get_state_topic().c_str(), payload.c_str(), 1,
-                   0);  // States don't usually need retention
-      return 0;         // Stop and wait for the ACK
-    }
+    ++num_published;
   }
-  return -2;
+  return num_published;
 }
 
 // --- 3. The Object-Oriented Event Router ---

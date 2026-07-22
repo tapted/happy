@@ -43,7 +43,7 @@ class MqttDevice : public Device {
 
   static void static_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id,
                                    void* event_data);
-  int pump_queue(bool bypass_idle_check);
+  int pump_queue(bool is_ack_resolution);
   void handle_event(int32_t event_id, esp_mqtt_event_handle_t event);
 
   void on_connected();
