@@ -36,14 +36,6 @@ EspResult<void> MqttDevice::begin(const esp_mqtt_client_config_t& mqtt_cfg) {
   return ESP_OK;
 }
 
-int MqttDevice::publish(const Entity& entity) const {
-  if (!client_) {
-    return ESP_ERR_INVALID_STATE;
-  }
-  std::string payload = entity.get_state_payload();
-  return mqtt_enqueue(entity.get_state_topic().c_str(), payload.c_str());
-}
-
 // FreeRTOS requires a static C-style function signature. We use the handler_args
 // to cast the pointer back into our specific C++ instance.
 void MqttDevice::static_event_handler(void* handler_args, esp_event_base_t /*base*/,
@@ -54,6 +46,47 @@ void MqttDevice::static_event_handler(void* handler_args, esp_event_base_t /*bas
   instance->handle_event(event_id, event);
 }
 
+int MqttDevice::pump_queue(bool bypass_idle_check) {
+  // If the outbox is busy, or we are disconnected, do nothing.
+  if (!bypass_idle_check && !is_idle()) return -1;
+  
+  // Loop through all entities to find the next pending action.
+  for (Entity& entity : entities_) {
+    // 1. Prioritize Discovery
+    if (entity.get_pending_flags() & Entity::FLAG_DISCOVERY) {
+      entity.clear_flag(Entity::FLAG_DISCOVERY);
+      std::string payload = entity.get_discovery_payload();
+      mqtt_publish(entity.get_discovery_topic().c_str(), payload.c_str(), 1, 1);
+      return 0;  // Stop and wait for the ACK
+    }
+
+    // 2. Then Subscriptions
+    if (entity.get_pending_flags() & Entity::FLAG_SUBSCRIBE) {
+      entity.clear_flag(Entity::FLAG_SUBSCRIBE);
+      int msg_id = esp_mqtt_client_subscribe_single(client_, entity.get_command_topic().c_str(), 1);
+      if (msg_id > 0) {
+        pending_acks_.fetch_add(1, std::memory_order_relaxed);
+      } else if (msg_id == -2) {
+        ESP_LOGW(TAG, "Outbox full. Failed to subscribe to topic: %s",
+                 entity.get_command_topic().c_str());
+      } else if (msg_id == -1) {
+        ESP_LOGW(TAG, "Failed to subscribe to topic: %s", entity.get_command_topic().c_str());
+      }
+      return 0;  // Stop and wait for the ACK
+    }
+
+    // 3. Finally, State Publishing
+    if (entity.get_pending_flags() & Entity::FLAG_STATE) {
+      entity.clear_flag(Entity::FLAG_STATE);
+      std::string payload = entity.get_state_payload();
+      mqtt_publish(entity.get_state_topic().c_str(), payload.c_str(), 1,
+                   0);  // States don't usually need retention
+      return 0;         // Stop and wait for the ACK
+    }
+  }
+  return -2;
+}
+
 // --- 3. The Object-Oriented Event Router ---
 void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
   switch (event_id) {
@@ -61,8 +94,10 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
       break;  // We're running!
 
     case MQTT_EVENT_CONNECTED:
-      ESP_LOGI(TAG, "Connected to Broker. Publishing Discovery...");
+      ESP_LOGI("MqttDevice", "Connected to Broker. Queueing Discovery...");
       on_connected();
+      // Remove the initialization lock
+      pending_acks_.fetch_sub(1, std::memory_order_release);
       break;
 
     case MQTT_EVENT_DATA: {
@@ -80,15 +115,15 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
 
     case MQTT_EVENT_SUBSCRIBED:
     case MQTT_EVENT_PUBLISHED:
-      // A message or subscription has been successfully acknowledged by the broker!
+      // Immediately check if another entity is waiting to send data
+      pump_queue(true);  // bypass idle check to avoid idle detection
+      // The broker acknowledged our last packet!
       pending_acks_.fetch_sub(1, std::memory_order_release);
-      ESP_LOGD(TAG, "ACK received. Pending operations: %d", pending_acks_.load());
       break;
 
     case MQTT_EVENT_DISCONNECTED:
-      ESP_LOGW(TAG, "Disconnected from Broker.");
-      // Re-apply the lock so is_idle() returns false while disconnected.
-      // We check if it's already > 0 to prevent stacking locks on rapid disconnects.
+      ESP_LOGW("MqttDevice", "Disconnected from Broker.");
+      // Lock the pump so entities can flag themselves, but pump_queue() exits early
       if (pending_acks_.load(std::memory_order_acquire) <= 0) {
         pending_acks_.fetch_add(1, std::memory_order_release);
       }
@@ -102,36 +137,13 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
 
 // --- 4. The Auto-Discovery Engine ---
 void MqttDevice::on_connected() {
-  // Iterate over the IntrusiveList natively
+  // Flag everything for setup
   for (Entity& entity : entities_) {
-    // 1. Publish the JSON Discovery Payload (Retained = true)
-    std::string payload = entity.get_discovery_payload();
-    mqtt_publish(entity.get_discovery_topic().c_str(), payload.c_str());
-
-    // 2. Subscribe to the command topic if the entity has one (e.g., Lights, Switches)
-    std::string topic = entity.get_command_topic();
-    if (!topic.empty()) {
-      int msg_id = esp_mqtt_client_subscribe_single(client_, topic.c_str(), 1);
-      if (msg_id > 0) {
-        pending_acks_.fetch_add(1, std::memory_order_relaxed);
-        ESP_LOGD(TAG, "Subscribed to command topic: %s (msg_id=%d)", topic.c_str(), msg_id);
-      } else if (msg_id == -1) {
-        ESP_LOGW(TAG, "Failed to subscribe to command topic: %s", topic.c_str());
-      } else if (msg_id == -2) {
-        ESP_LOGW(TAG, "Outbox full. Failed to subscribe to command topic: %s", topic.c_str());
-      }
-    }
+    entity.request_discovery();
+    entity.request_publish();  // Ensure the latest state is sent on boot
   }
-
-  for (const Entity& entity : entities_) {
-    publish(entity);
-  }
-
-  // THE INITIALIZATION LOCK RELEASE
-  // We have finished enqueuing all discovery and state packets.
-  // We remove the +1 lock we set in the constructor.
-  // Once the ACKs for the packets we just queued come back, the counter will hit 0!
-  pending_acks_.fetch_sub(1, std::memory_order_release);
+  // Kick off the first packet
+  pump_queue(true);
 }
 
 int MqttDevice::mqtt_publish(const char* topic, const char* payload, int qos, int retain) const {
@@ -147,6 +159,7 @@ int MqttDevice::mqtt_publish(const char* topic, const char* payload, int qos, in
   return msg_id;
 }
 
+// Note: unused.
 int MqttDevice::mqtt_enqueue(const char* topic, const char* payload, int qos, int retain,
                              bool store) const {
   int msg_id = esp_mqtt_client_enqueue(client_, topic, payload, 0, qos, retain, store);

@@ -28,8 +28,7 @@ class MqttDevice : public Device {
   // ```
   EspResult<void> begin(const esp_mqtt_client_config_t& mqtt_cfg);
 
-  // Publish a single entity.
-  int publish(const Entity& entity) const override;
+  int poke() override { return pump_queue(false); }
 
   esp_mqtt_client_handle_t get_client() const { return client_; }
 
@@ -44,6 +43,7 @@ class MqttDevice : public Device {
 
   static void static_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id,
                                    void* event_data);
+  int pump_queue(bool bypass_idle_check);
   void handle_event(int32_t event_id, esp_mqtt_event_handle_t event);
 
   void on_connected();

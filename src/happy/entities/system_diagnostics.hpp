@@ -9,7 +9,7 @@ class SystemDiagnostics {
   explicit SystemDiagnostics(Device& device);
 
   // Push all sensor states to MQTT
-  void publish_all() const;
+  void publish_all();
 
  private:
   Sensor boot_time_;

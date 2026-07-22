@@ -27,9 +27,18 @@ class Entity : public Core::IntrusiveNode<Entity> {
   std::string command_topic_;
 
  public:
-  Entity(Device& device, std::string_view domain, std::string_view object_id, std::string_view name);
+  static constexpr uint8_t FLAG_DISCOVERY = 1 << 0;
+  static constexpr uint8_t FLAG_SUBSCRIBE = 1 << 1;
+  static constexpr uint8_t FLAG_STATE = 1 << 2;
 
-  void publish() const;
+  Entity(Device& device, std::string_view domain, std::string_view object_id,
+         std::string_view name);
+
+  void request_publish();
+  void request_discovery();
+
+  uint8_t get_pending_flags() const { return pending_flags_; }
+  void clear_flag(uint8_t flag) { pending_flags_ &= ~flag; }
 
   virtual ~Entity() = default;
 
@@ -46,6 +55,8 @@ class Entity : public Core::IntrusiveNode<Entity> {
   virtual void handle_command(std::string_view /*payload*/) {}
 
  protected:
+  uint8_t pending_flags_ = 0;
+
   void initialize_base_topics(bool expects_commands = false);
   bool load_nvs_blob(void* dest, size_t size) const;
   void save_nvs_blob(const void* src, size_t size) const;
@@ -81,7 +92,7 @@ class PersistentEntity : public Entity {
     }
     state_ = new_state;
     this->save_nvs_blob(&state_, sizeof(StateStruct));
-    this->publish();
+    this->request_publish();
     this->on_change();
   }
 

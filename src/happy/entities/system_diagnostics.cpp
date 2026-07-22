@@ -220,17 +220,17 @@ SystemDiagnostics::SystemDiagnostics(Device& device)
                    }) {
 }
 
-void SystemDiagnostics::publish_all() const {
-  boot_time_.publish();
-  reboot_reason_.publish();
-  compile_date_.publish();
-  free_iram_.publish();
-  free_spiram_.publish();
-  firmware_size_.publish();
-  ota_partition_size_.publish();
-  fs_used_space_.publish();
-  ip_address_.publish();
-  temperature_.publish();
+void SystemDiagnostics::publish_all() {
+  boot_time_.request_publish();
+  reboot_reason_.request_publish();
+  compile_date_.request_publish();
+  free_iram_.request_publish();
+  free_spiram_.request_publish();
+  firmware_size_.request_publish();
+  ota_partition_size_.request_publish();
+  fs_used_space_.request_publish();
+  ip_address_.request_publish();
+  temperature_.request_publish();
 }
 
 }  // namespace HAPPY::Entities

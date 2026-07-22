@@ -8,7 +8,6 @@
 #include "espbase/nvs_store.hpp"
 #include "happy/device.hpp"
 
-
 namespace HAPPY {
 
 Entity::Entity(Device& device, std::string_view domain, std::string_view object_id,
@@ -20,7 +19,18 @@ Entity::Entity(Device& device, std::string_view domain, std::string_view object_
   device_.register_entity(this);
 }
 
-void Entity::publish() const { device_.publish(*this); }
+void Entity::request_publish() {
+  pending_flags_ |= FLAG_STATE;
+  device_.poke();
+}
+
+void Entity::request_discovery() {
+  pending_flags_ |= FLAG_DISCOVERY;
+  if (!command_topic_.empty()) {
+    pending_flags_ |= FLAG_SUBSCRIBE;
+  }
+  device_.poke();
+}
 
 void Entity::initialize_base_topics(bool expects_commands) {
   char buf[128];

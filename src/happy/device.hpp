@@ -42,8 +42,10 @@ class Device {
 
   // --- Registry Implementation ---
   void register_entity(Entity* entity);
-  void republish_all() const;
-  virtual int publish(const Entity& entity) const = 0;
+  void republish_all();
+  int publish(Entity& entity);
+
+  virtual int poke() = 0;
 
   // Loads all entities from NVS. This is called automatically by begin() but can be called
   // manually if you want to load the state before initializing topics.
