@@ -6,6 +6,8 @@
 
 namespace HAPPY::Transports {
 
+static constexpr char TAG[] = "MqttDevice";
+
 MqttDevice::~MqttDevice() {
   if (client_) {
     esp_mqtt_client_stop(client_);
@@ -19,17 +21,17 @@ EspResult<void> MqttDevice::begin(const esp_mqtt_client_config_t& mqtt_cfg) {
 
   client_ = esp_mqtt_client_init(&mqtt_cfg);
   if (!client_) {
-    ESP_LOGE("MqttDevice", "Failed to initialize MQTT client");
+    ESP_LOGE(TAG, "Failed to initialize MQTT client");
     return ESP_ERR_NO_MEM;
   }
 
   if (EspError err = esp_mqtt_client_register_event(client_, MQTT_EVENT_ANY,
                                                     &MqttDevice::static_event_handler, this)) {
-    return err.log("MqttDevice", "Failed to register MQTT event handler");
+    return err.log(TAG, "Failed to register MQTT event handler");
   }
 
   if (EspError err = esp_mqtt_client_start(client_)) {
-    return err.log("MqttDevice", "Failed to start MQTT client");
+    return err.log(TAG, "Failed to start MQTT client");
   }
   return ESP_OK;
 }
@@ -59,7 +61,7 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
       break;  // We're running!
 
     case MQTT_EVENT_CONNECTED:
-      ESP_LOGI("MqttDevice", "Connected to Broker. Publishing Discovery...");
+      ESP_LOGI(TAG, "Connected to Broker. Publishing Discovery...");
       on_connected();
       break;
 
@@ -67,6 +69,9 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
       // Wrap the raw C buffers in zero-allocation C++ views
       std::string_view topic(event->topic, event->topic_len);
       std::string_view payload(event->data, event->data_len);
+      ESP_LOGI(TAG, "Received MQTT message on topic: %.*s, payload: %.*s",
+               static_cast<int>(topic.size()), topic.data(), static_cast<int>(payload.size()),
+               payload.data());
 
       // Pass directly to the base registry for routing
       this->dispatch_command(topic, payload);
@@ -77,11 +82,11 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
     case MQTT_EVENT_PUBLISHED:
       // A message or subscription has been successfully acknowledged by the broker!
       pending_acks_.fetch_sub(1, std::memory_order_release);
-      ESP_LOGD("MqttDevice", "ACK received. Pending operations: %d", pending_acks_.load());
+      ESP_LOGD(TAG, "ACK received. Pending operations: %d", pending_acks_.load());
       break;
 
     case MQTT_EVENT_DISCONNECTED:
-      ESP_LOGW("MqttDevice", "Disconnected from Broker.");
+      ESP_LOGW(TAG, "Disconnected from Broker.");
       // Re-apply the lock so is_idle() returns false while disconnected.
       // We check if it's already > 0 to prevent stacking locks on rapid disconnects.
       if (pending_acks_.load(std::memory_order_acquire) <= 0) {
@@ -90,7 +95,7 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
       break;
 
     default:
-      ESP_LOGW("MqttDevice", "Unhandled MQTT Event: %d", event_id);
+      ESP_LOGW(TAG, "Unhandled MQTT Event: %d", event_id);
       break;
   }
 }
@@ -104,9 +109,17 @@ void MqttDevice::on_connected() {
     mqtt_publish(entity.get_discovery_topic().c_str(), payload.c_str());
 
     // 2. Subscribe to the command topic if the entity has one (e.g., Lights, Switches)
-    if (!entity.get_command_topic().empty()) {
-      int msg_id = esp_mqtt_client_subscribe_single(client_, entity.get_command_topic().c_str(), 1);
-      if (msg_id > 0) pending_acks_.fetch_add(1, std::memory_order_relaxed);
+    std::string topic = entity.get_command_topic();
+    if (!topic.empty()) {
+      int msg_id = esp_mqtt_client_subscribe_single(client_, topic.c_str(), 1);
+      if (msg_id > 0) {
+        pending_acks_.fetch_add(1, std::memory_order_relaxed);
+        ESP_LOGD(TAG, "Subscribed to command topic: %s (msg_id=%d)", topic.c_str(), msg_id);
+      } else if (msg_id == -1) {
+        ESP_LOGW(TAG, "Failed to subscribe to command topic: %s", topic.c_str());
+      } else if (msg_id == -2) {
+        ESP_LOGW(TAG, "Outbox full. Failed to subscribe to command topic: %s", topic.c_str());
+      }
     }
   }
 
@@ -123,14 +136,27 @@ void MqttDevice::on_connected() {
 
 int MqttDevice::mqtt_publish(const char* topic, const char* payload, int qos, int retain) const {
   int msg_id = esp_mqtt_client_publish(client_, topic, payload, 0, qos, retain);
-  if (msg_id > 0) pending_acks_.fetch_add(1, std::memory_order_relaxed);
+  if (msg_id > 0) {
+    pending_acks_.fetch_add(1, std::memory_order_relaxed);
+  } else if (msg_id == -2) {
+    ESP_LOGW(TAG, "Outbox full. Failed to publish message to topic: %s", topic);
+  } else if (msg_id == -1) {
+    ESP_LOGW(TAG, "Failed to publish message to topic: %s", topic);
+  }
+
   return msg_id;
 }
 
 int MqttDevice::mqtt_enqueue(const char* topic, const char* payload, int qos, int retain,
                              bool store) const {
   int msg_id = esp_mqtt_client_enqueue(client_, topic, payload, 0, qos, retain, store);
-  if (msg_id > 0) pending_acks_.fetch_add(1, std::memory_order_relaxed);
+  if (msg_id > 0) {
+    pending_acks_.fetch_add(1, std::memory_order_relaxed);
+  } else if (msg_id == -2) {
+    ESP_LOGW(TAG, "Outbox full. Failed to enqueue message to topic: %s", topic);
+  } else if (msg_id == -1) {
+    ESP_LOGW(TAG, "Failed to enqueue message to topic: %s", topic);
+  }
   return msg_id;
 }
 

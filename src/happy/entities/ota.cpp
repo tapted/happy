@@ -150,9 +150,11 @@ OtaController::OtaController(Device& device, const char* base_version)
       current_version_ = buf;  // Overwrite the base version.
     }
   }
+  ESP_LOGI(TAG, "OTA Controller initialized. Current version: %s", current_version_.c_str());
 }
 
 void OtaController::ota_trigger() {
+  ESP_LOGI("HAPPY_OTA", "Saw ota_trigger. Starting OTA task...");
   ota_task_
       .start(
           {

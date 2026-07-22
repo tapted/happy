@@ -19,7 +19,7 @@ static std::string get_temperature_celsius() {
   static auto sensor = []() -> EspResult<temperature_sensor_handle_t> {
     temperature_sensor_handle_t temp_handle;
     temperature_sensor_config_t temp_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(20, 50);
-    temp_config.flags.allow_pd = 1;  // Allow power down mode for lower power consumption
+    // temp_config.flags.allow_pd = 1;  // Allow power down mode for lower power consumption
     if (EspError err = temperature_sensor_install(&temp_config, &temp_handle)) {
       return err.log("TempSensor", "Failed to install temperature sensor");
     }

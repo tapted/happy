@@ -18,7 +18,6 @@ class OtaController {
   static void ota_step(EspTask<OtaController>& task);
 
   std::string current_version_;
-  static constexpr const char* TAG = "HAPPY_OTA";
 
   Text server_url_;
   Text project_name_;
