@@ -28,28 +28,27 @@ class MqttDevice : public Device {
   // ```
   EspResult<void> begin(const esp_mqtt_client_config_t& mqtt_cfg);
 
-  int poke() override { return pump_queue(false); }
+  void poke() override { pump_queue(); }
 
   esp_mqtt_client_handle_t get_client() const { return client_; }
 
-  // Returns true ONLY if the connection has finished and all ACKs are received.
-  bool is_idle() const { return pending_acks_.load(std::memory_order_acquire) <= 0; }
+  bool is_idle() const;
 
  private:
   esp_mqtt_client_handle_t client_ = nullptr;
-
-  // Start at 1 so the device isn't considered idle while it is still trying to connect.
-  mutable std::atomic<int> pending_acks_{1};
+  std::atomic<bool> is_connected_{false};
+  std::atomic<bool> initial_setup_complete_{false};  // Protects the boot phase
+  std::atomic<int> pending_acks_{0};                 // Only tracks active in-flight QoS > 0 packets
 
   static void static_event_handler(void* handler_args, esp_event_base_t base, int32_t event_id,
                                    void* event_data);
-  int pump_queue(bool is_ack_resolution);
+  void pump_queue();
   void handle_event(int32_t event_id, esp_mqtt_event_handle_t event);
 
   void on_connected();
-  int mqtt_publish(const char* topic, const char* payload, int qos = 1, int retain = 1) const;
+  int mqtt_publish(const char* topic, const char* payload, int qos = 1, int retain = 1);
   int mqtt_enqueue(const char* topic, const char* payload, int qos = 1, int retain = 1,
-                   bool store = false) const;
+                   bool store = false);
 };
 
 }  // namespace HAPPY::Transports

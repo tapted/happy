@@ -20,15 +20,16 @@ Entity::Entity(Device& device, std::string_view domain, std::string_view object_
 }
 
 void Entity::request_publish() {
-  pending_flags_ |= FLAG_STATE;
+  pending_flags_.fetch_or(FLAG_STATE, std::memory_order_release);
   device_.poke();
 }
 
 void Entity::request_discovery() {
-  pending_flags_ |= FLAG_DISCOVERY;
+  uint8_t flags = FLAG_DISCOVERY;
   if (!command_topic_.empty()) {
-    pending_flags_ |= FLAG_SUBSCRIBE;
+    flags |= FLAG_SUBSCRIBE;
   }
+  pending_flags_.fetch_or(flags, std::memory_order_release);
   device_.poke();
 }
 

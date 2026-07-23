@@ -36,6 +36,22 @@ EspResult<void> MqttDevice::begin(const esp_mqtt_client_config_t& mqtt_cfg) {
   return ESP_OK;
 }
 
+bool MqttDevice::is_idle() const {
+  // 1. Not idle if we are still booting and haven't queued our first discovery
+  if (!initial_setup_complete_.load(std::memory_order_acquire)) return false;
+
+  // 2. Not idle if packets are currently traveling over the network
+  if (pending_acks_.load(std::memory_order_acquire) > 0) return false;
+
+  // 3. Not idle if any entity has data waiting to be pumped
+  for (const Entity& entity : entities_) {
+    if (entity.get_pending_flags() != 0) return false;
+  }
+
+  // Truly idle. Safe to tear down.
+  return true;
+}
+
 // FreeRTOS requires a static C-style function signature. We use the handler_args
 // to cast the pointer back into our specific C++ instance.
 void MqttDevice::static_event_handler(void* handler_args, esp_event_base_t /*base*/,
@@ -46,34 +62,30 @@ void MqttDevice::static_event_handler(void* handler_args, esp_event_base_t /*bas
   instance->handle_event(event_id, event);
 }
 
-int MqttDevice::pump_queue(bool is_ack_resolution) {
-  // Define your maximum packets in flight (sliding window size)
+void MqttDevice::pump_queue() {
+  // If we are offline, abort entirely. The flags stay safely set on the entities.
+  if (!is_connected_.load(std::memory_order_acquire)) return;
+
   constexpr int MAX_IN_FLIGHT = 1;
-  int num_published = 0;
 
   for (Entity& entity : entities_) {
-    // 1. Evaluate the real-time window capacity
-    int current_in_flight = pending_acks_.load(std::memory_order_acquire);
+    // Only block if the ACK window is full
+    if (pending_acks_.load(std::memory_order_acquire) >= MAX_IN_FLIGHT) return;
 
-    // If we are currently handling an ACK, one of those in-flight locks is about to be released
-    // immediately after this function returns. We account for it to maximize our window.
-    if (is_ack_resolution) current_in_flight -= 1;
-
-    // If the window is full (or permanently locked by a disconnect), stop pumping.
-    if (current_in_flight >= MAX_IN_FLIGHT) return num_published;
-
-    // 2. Dispatch the next highest-priority action
     if (entity.get_pending_flags() & Entity::FLAG_DISCOVERY) {
-      entity.clear_flag(Entity::FLAG_DISCOVERY);
-      // mqtt_publish automatically increments pending_acks_ under the hood
-      mqtt_publish(entity.get_discovery_topic().c_str(), entity.get_discovery_payload().c_str(), 1,
-                   1);
+      int msg_id = mqtt_enqueue(entity.get_discovery_topic().c_str(),
+                                entity.get_discovery_payload().c_str(), 1, 1);
+      if (msg_id >= 0) {
+        entity.clear_flag(Entity::FLAG_DISCOVERY);
+        pending_acks_.fetch_add(1, std::memory_order_relaxed);
+      }
 
     } else if (entity.get_pending_flags() & Entity::FLAG_SUBSCRIBE) {
-      entity.clear_flag(Entity::FLAG_SUBSCRIBE);
       int msg_id = esp_mqtt_client_subscribe_single(client_, entity.get_command_topic().c_str(), 1);
-      if (msg_id > 0) {
+      if (msg_id >= 0) {
+        entity.clear_flag(Entity::FLAG_SUBSCRIBE);
         pending_acks_.fetch_add(1, std::memory_order_relaxed);
+        ESP_LOGD(TAG, "Subscribed to topic: %s", entity.get_command_topic().c_str());
       } else if (msg_id == -2) {
         ESP_LOGW(TAG, "Outbox full. Failed to subscribe to topic: %s",
                  entity.get_command_topic().c_str());
@@ -82,27 +94,64 @@ int MqttDevice::pump_queue(bool is_ack_resolution) {
       }
 
     } else if (entity.get_pending_flags() & Entity::FLAG_STATE) {
-      entity.clear_flag(Entity::FLAG_STATE);
-      // Pushing state data at QoS 0 bypasses the outbox queue entirely
-      mqtt_publish(entity.get_state_topic().c_str(), entity.get_state_payload().c_str(), 0, 0);
-    }
+      int qos = entity.get_state_qos();
+      int retain = entity.get_state_retain();
 
-    ++num_published;
+      if (qos > 0) {
+        // --- CRITICAL STATE (QoS 1) ---
+        // Puts it in the sliding window. Must receive an ACK.
+        int msg_id = mqtt_enqueue(entity.get_state_topic().c_str(),
+                                  entity.get_state_payload().c_str(), qos, retain);
+        if (msg_id >= 0) {
+          entity.clear_flag(Entity::FLAG_STATE);
+          pending_acks_.fetch_add(1, std::memory_order_relaxed);
+        }
+        // If msg_id < 0, the flag remains set. An eventual ACK from another
+        // in-flight packet or a reconnect event will re-trigger the pump.
+      } else {
+        // --- EPHEMERAL TELEMETRY (QoS 0) ---
+        // Fire and forget.
+        mqtt_enqueue(entity.get_state_topic().c_str(), entity.get_state_payload().c_str(), 0, 0);
+
+        // Unconditionally clear the flag to prevent deadlocks.
+        // If the socket was full, this specific reading is dropped safely.
+        entity.clear_flag(Entity::FLAG_STATE);
+      }
+    }
   }
-  return num_published;
+  static int pump_count = 0;
+  ++pump_count;
+  if (is_idle()) {
+    ESP_LOGD(TAG, "Idle after %d pumps", pump_count);
+  }
 }
 
-// --- 3. The Object-Oriented Event Router ---
 void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
   switch (event_id) {
+    case MQTT_EVENT_ERROR:
+      // Catch this quietly to stop the "Unhandled Event: 0" log spam.
+      // It fires frequently when the underlying TCP socket resets or TLS fails.
+      ESP_LOGW(TAG, "MQTT_EVENT_ERROR (Transport/Socket issue)");
+      break;
+
     case MQTT_EVENT_BEFORE_CONNECT:
-      break;  // We're running!
+      // Safe to ignore, just noise.
+      break;
 
     case MQTT_EVENT_CONNECTED:
-      ESP_LOGI("MqttDevice", "Connected to Broker. Queueing Discovery...");
+      ESP_LOGI(TAG, "Connected to Broker.");
+      // 1. Mark online to unpause the pump
+      is_connected_.store(true, std::memory_order_release);
+      // 2. Erase any stranded ACKs from packets lost during the outage
+      pending_acks_.store(0, std::memory_order_release);
+      // 3. Flag entities and start pumping
       on_connected();
-      // Remove the initialization lock
-      pending_acks_.fetch_sub(1, std::memory_order_release);
+      break;
+
+    case MQTT_EVENT_DISCONNECTED:
+      ESP_LOGW(TAG, "Disconnected from Broker.");
+      // Pause the pump. We don't touch pending_acks_ because the CONNECT event will clear it.
+      is_connected_.store(false, std::memory_order_release);
       break;
 
     case MQTT_EVENT_DATA: {
@@ -120,41 +169,36 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
 
     case MQTT_EVENT_SUBSCRIBED:
     case MQTT_EVENT_PUBLISHED:
-      // Immediately check if another entity is waiting to send data
-      pump_queue(true);  // bypass idle check to avoid idle detection
-      // The broker acknowledged our last packet!
       pending_acks_.fetch_sub(1, std::memory_order_release);
-      break;
-
-    case MQTT_EVENT_DISCONNECTED:
-      ESP_LOGW("MqttDevice", "Disconnected from Broker.");
-      // Lock the pump so entities can flag themselves, but pump_queue() exits early
-      if (pending_acks_.load(std::memory_order_acquire) <= 0) {
-        pending_acks_.fetch_add(1, std::memory_order_release);
-      }
+      pump_queue();
       break;
 
     default:
-      ESP_LOGW(TAG, "Unhandled MQTT Event: %d", event_id);
+      ESP_LOGW(TAG, "Unhandled MQTT Event ID: %d", event_id);
       break;
   }
 }
 
-// --- 4. The Auto-Discovery Engine ---
 void MqttDevice::on_connected() {
-  // Flag everything for setup
+  // 1. Flag everything for setup
   for (Entity& entity : entities_) {
     entity.request_discovery();
     entity.request_publish();  // Ensure the latest state is sent on boot
   }
-  // Kick off the first packet
-  pump_queue(true);
+
+  // 2. The entities now hold the lock via their bitfields.
+  // We can safely release the global boot guard.
+  initial_setup_complete_.store(true, std::memory_order_release);
+
+  // 3. Kick off the first packet
+  pump_queue();
 }
 
-int MqttDevice::mqtt_publish(const char* topic, const char* payload, int qos, int retain) const {
+int MqttDevice::mqtt_publish(const char* topic, const char* payload, int qos, int retain) {
   int msg_id = esp_mqtt_client_publish(client_, topic, payload, 0, qos, retain);
-  if (msg_id > 0) {
-    pending_acks_.fetch_add(1, std::memory_order_relaxed);
+  if (msg_id >= 0) {
+    ESP_LOGD(TAG, "Published message to topic: %s, qos: %d, retain: %d msgid: %d", topic, qos,
+             retain, msg_id);
   } else if (msg_id == -2) {
     ESP_LOGW(TAG, "Outbox full. Failed to publish message to topic: %s", topic);
   } else if (msg_id == -1) {
@@ -164,12 +208,12 @@ int MqttDevice::mqtt_publish(const char* topic, const char* payload, int qos, in
   return msg_id;
 }
 
-// Note: unused.
 int MqttDevice::mqtt_enqueue(const char* topic, const char* payload, int qos, int retain,
-                             bool store) const {
+                             bool store) {
   int msg_id = esp_mqtt_client_enqueue(client_, topic, payload, 0, qos, retain, store);
   if (msg_id > 0) {
-    pending_acks_.fetch_add(1, std::memory_order_relaxed);
+    ESP_LOGD(TAG, "Enqueued message to topic: %s, qos: %d, retain: %d msgid: %d", topic, qos,
+             retain, msg_id);
   } else if (msg_id == -2) {
     ESP_LOGW(TAG, "Outbox full. Failed to enqueue message to topic: %s", topic);
   } else if (msg_id == -1) {

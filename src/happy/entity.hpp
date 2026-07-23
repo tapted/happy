@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -30,6 +31,8 @@ class Entity : public Core::IntrusiveNode<Entity> {
   static constexpr uint8_t FLAG_DISCOVERY = 1 << 0;
   static constexpr uint8_t FLAG_SUBSCRIBE = 1 << 1;
   static constexpr uint8_t FLAG_STATE = 1 << 2;
+  static constexpr uint8_t EPHEMERAL_STATE_QOS = 1 << 3;
+  static constexpr uint8_t RETAIN_STATE = 1 << 4;
 
   Entity(Device& device, std::string_view domain, std::string_view object_id,
          std::string_view name);
@@ -37,8 +40,10 @@ class Entity : public Core::IntrusiveNode<Entity> {
   void request_publish();
   void request_discovery();
 
-  uint8_t get_pending_flags() const { return pending_flags_; }
-  void clear_flag(uint8_t flag) { pending_flags_ &= ~flag; }
+  uint8_t get_pending_flags() const { return pending_flags_.load(std::memory_order_acquire); }
+  int get_state_qos() const { return (get_pending_flags() & EPHEMERAL_STATE_QOS) ? 0 : 1; }
+  int get_state_retain() const { return (get_pending_flags() & RETAIN_STATE) ? 1 : 0; }
+  void clear_flag(uint8_t flag) { pending_flags_.fetch_and(~flag, std::memory_order_release); }
 
   virtual ~Entity() = default;
 
@@ -55,7 +60,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
   virtual void handle_command(std::string_view /*payload*/) {}
 
  protected:
-  uint8_t pending_flags_ = 0;
+  std::atomic<uint8_t> pending_flags_{0};
 
   void initialize_base_topics(bool expects_commands = false);
   bool load_nvs_blob(void* dest, size_t size) const;
