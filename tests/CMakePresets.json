@@ -1,0 +1,17 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "happy_tests",
+      "displayName": "Tests for happy",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "ENABLE_CJSON_TEST": "OFF"
+      },
+      "environment": {
+        "CMAKE_POLICY_VERSION_MINIMUM": "3.5"
+      }
+    }
+  ]
+}
