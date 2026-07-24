@@ -45,14 +45,14 @@ void Device::load() {
 
 void Device::begin() {
   load();
-  for (Entity& entity : entities_) {
-    entity.initialize_topics();
-  }
 }
 
 void Device::dispatch_command(std::string_view topic, std::string_view payload) const {
+  topic_buf_t command_topic;
   for (Entity& entity : entities_) {
-    if (!entity.get_command_topic().empty() && entity.get_command_topic() == topic) {
+    if (!entity.expects_commands()) continue;
+    entity.get_command_topic(command_topic);
+    if (std::string_view(command_topic) == topic) {
       entity.handle_command(payload);
       return;  // Stop searching once routed
     }

@@ -26,7 +26,6 @@ class Time : public PersistentEntity<Time, TimeState> {
   uint8_t minute() const { return state().minute_; }
   uint8_t second() const { return state().second_; }
 
-  void initialize_topics() override;
   std::string get_discovery_payload() const override;
   std::string get_state_payload() const override;
   void handle_command(std::string_view payload) override;

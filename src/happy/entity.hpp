@@ -25,18 +25,16 @@ class Entity : public Core::IntrusiveNode<Entity> {
   const char* const object_id_;
   const char* const name_;
 
-  std::string discovery_topic_;
-  std::string state_topic_;
-  std::string command_topic_;
-
  public:
   static constexpr uint8_t FLAG_DISCOVERY = 1 << 0;
   static constexpr uint8_t FLAG_SUBSCRIBE = 1 << 1;
   static constexpr uint8_t FLAG_STATE = 1 << 2;
   static constexpr uint8_t EPHEMERAL_STATE_QOS = 1 << 3;
   static constexpr uint8_t RETAIN_STATE = 1 << 4;
+  static constexpr uint8_t EXPECTS_COMMANDS = 1 << 5;
 
-  Entity(Device& device, const char* domain, const char* object_id, const char* name);
+  Entity(Device& device, const char* domain, const char* object_id, const char* name,
+         bool expects_commands = false);
 
   void request_publish();
   void request_discovery();
@@ -44,16 +42,16 @@ class Entity : public Core::IntrusiveNode<Entity> {
   uint8_t get_pending_flags() const { return pending_flags_.load(std::memory_order_acquire); }
   int get_state_qos() const { return (get_pending_flags() & EPHEMERAL_STATE_QOS) ? 0 : 1; }
   int get_state_retain() const { return (get_pending_flags() & RETAIN_STATE) ? 1 : 0; }
+  bool expects_commands() const { return (get_pending_flags() & EXPECTS_COMMANDS) != 0; }
   void clear_flag(uint8_t flag) { pending_flags_.fetch_and(~flag, std::memory_order_release); }
 
   virtual ~Entity() = default;
 
-  const std::string& get_discovery_topic() const { return discovery_topic_; }
-  const std::string& get_state_topic() const { return state_topic_; }
-  const std::string& get_command_topic() const { return command_topic_; }
+  void get_discovery_topic(topic_buf_t& buf) const;
+  void get_state_topic(topic_buf_t& buf) const;
+  void get_command_topic(topic_buf_t& buf) const;
 
   virtual void load() {}
-  virtual void initialize_topics() = 0;
   virtual std::string get_discovery_payload() const = 0;
   virtual std::string get_state_payload() const { return std::string(); }
 
@@ -63,7 +61,6 @@ class Entity : public Core::IntrusiveNode<Entity> {
  protected:
   std::atomic<uint8_t> pending_flags_{0};
 
-  void initialize_base_topics(bool expects_commands = false);
   bool load_nvs_blob(void* dest, size_t size) const;
   void save_nvs_blob(const void* src, size_t size) const;
 

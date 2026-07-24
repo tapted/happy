@@ -20,14 +20,13 @@ class Select : public PersistentEntity<Select, SelectState> {
   };
 
   Select(Device& device, const char* object_id, const char* name, Config config)
-      : PersistentEntity(device, "select", object_id, name), config_(std::move(config)) {}
+      : PersistentEntity(device, "select", object_id, name, true), config_(std::move(config)) {}
 
   bool empty() const { return config_.options.empty(); }
   std::string_view get_selected() const {
     return empty() ? "" : config_.options[state().selected_option_index_];
   }
 
-  void initialize_topics() override;
   std::string get_discovery_payload() const override;
   std::string get_state_payload() const override;
   void handle_command(std::string_view payload) override;

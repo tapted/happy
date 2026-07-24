@@ -8,8 +8,12 @@
 
 namespace HAPPY {
 
-Entity::Entity(Device& device, const char* domain, const char* object_id, const char* name)
+Entity::Entity(Device& device, const char* domain, const char* object_id, const char* name,
+               bool expects_commands)
     : device_(device), domain_(domain), object_id_(object_id), name_(name) {
+  if (expects_commands) {
+    pending_flags_.fetch_or(EXPECTS_COMMANDS, std::memory_order_relaxed);
+  }
   // Register the entity with the device upon construction. This means the constructors can't be
   // constexpr/constinit. But the registration structs do not require a heap allocation, so this
   // is still safe for static initialization.
@@ -23,26 +27,28 @@ void Entity::request_publish() {
 
 void Entity::request_discovery() {
   uint8_t flags = FLAG_DISCOVERY;
-  if (!command_topic_.empty()) {
+  if (expects_commands()) {
     flags |= FLAG_SUBSCRIBE;
   }
   pending_flags_.fetch_or(flags, std::memory_order_release);
   device_.poke();
 }
 
-void Entity::initialize_base_topics(bool expects_commands) {
-  char buf[128];
+void Entity::get_discovery_topic(topic_buf_t& buf) const {
   snprintf(buf, sizeof(buf), "homeassistant/%s/%s/%s/config", domain_, device_.get_identifier(),
            object_id_);
-  discovery_topic_ = buf;
+}
 
+void Entity::get_state_topic(topic_buf_t& buf) const {
   snprintf(buf, sizeof(buf), "%s/%s/state", device_.get_identifier(), object_id_);
-  state_topic_ = buf;
+}
 
-  if (expects_commands) {
-    snprintf(buf, sizeof(buf), "%s/%s/set", device_.get_identifier(), object_id_);
-    command_topic_ = buf;
+void Entity::get_command_topic(topic_buf_t& buf) const {
+  if (!expects_commands()) {
+    buf[0] = '\0';
+    return;
   }
+  snprintf(buf, sizeof(buf), "%s/%s/set", device_.get_identifier(), object_id_);
 }
 
 bool Entity::load_nvs_blob(void* dest, size_t size) const {
@@ -78,7 +84,9 @@ void Entity::inject_base_config(JsonObjectBuilder& builder) const {
 
   builder.set("name", name_);
   builder.set("unique_id", unique_id);
-  builder.set("state_topic", state_topic_);
+
+  get_state_topic(buf);
+  builder.set("state_topic", (const char*)buf);
 
   // Inject the physical device grouping data
   device_.inject_into(builder);

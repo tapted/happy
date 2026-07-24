@@ -12,7 +12,10 @@ std::string Text::get_discovery_payload() const {
   JsonObjectBuilder builder(doc.get());
   this->inject_base_config(builder);
 
-  builder.set("command_topic", command_topic_.c_str());
+  topic_buf_t command_topic;
+  get_command_topic(command_topic);
+  builder.set("command_topic", (const char*)command_topic);
+
   if (config_.icon) builder.set("icon", config_.icon);
   if (config_.entity_category) builder.set("entity_category", config_.entity_category);
 
@@ -21,10 +24,6 @@ std::string Text::get_discovery_payload() const {
 
 std::string Text::get_state_payload() const {
   return state().value;
-}
-
-void Text::initialize_topics() {
-  initialize_base_topics(true);
 }
 
 void Text::handle_command(std::string_view payload) {

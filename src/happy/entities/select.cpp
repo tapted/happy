@@ -6,16 +6,15 @@
 
 namespace HAPPY::Entities {
 
-void Select::initialize_topics() {
-  initialize_base_topics(true);
-}
-
 std::string Select::get_discovery_payload() const {
   JsonDocument doc;
   JsonObjectBuilder builder(doc.get());
   this->inject_base_config(builder);
 
-  builder.set("command_topic", command_topic_.c_str());
+  topic_buf_t command_topic;
+  get_command_topic(command_topic);
+  builder.set("command_topic", (const char*)command_topic);
+
   if (config_.icon) builder.set("icon", config_.icon);
   if (config_.entity_category) builder.set("entity_category", config_.entity_category);
 

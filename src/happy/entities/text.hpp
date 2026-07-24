@@ -20,7 +20,7 @@ class Text : public PersistentEntity<Text, TextState> {
   };
 
   Text(Device& device, const char* object_id, const char* name, Config config)
-      : PersistentEntity(device, "text", object_id, name), config_(config) {}
+      : PersistentEntity(device, "text", object_id, name, true), config_(config) {}
 
   void set_value(std::string_view new_value) {
     TextState new_state = state();
@@ -32,7 +32,6 @@ class Text : public PersistentEntity<Text, TextState> {
 
   std::string get_discovery_payload() const override;
   std::string get_state_payload() const override;
-  void initialize_topics() override;
   void handle_command(std::string_view payload) override;
 
   void on_change() override {

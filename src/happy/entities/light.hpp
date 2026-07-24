@@ -42,7 +42,7 @@ class Light : public PersistentEntity<Light, LightState> {
   };
 
   Light(Device& device, const char* object_id, const char* name, Config config)
-      : PersistentEntity<Light, LightState>(device, "light", object_id, name),
+      : PersistentEntity<Light, LightState>(device, "light", object_id, name, true),
         config_(std::move(config)) {}
 
   // --- State Accessors ---
@@ -61,7 +61,6 @@ class Light : public PersistentEntity<Light, LightState> {
   }
   std::string get_discovery_payload() const override;
   std::string get_state_payload() const override;
-  void initialize_topics() override;
   void handle_command(const std::string_view payload) override;
   void on_change() override {
     if (config_.on_update) config_.on_update(*this);

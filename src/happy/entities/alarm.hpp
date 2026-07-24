@@ -55,7 +55,6 @@ class AlarmController {
   OnAlarmUpdateCallback on_update_;
   OnAlarmUpdateCallback on_test_;
 
-  // We store the strings here so the std::string_views in the Entities stay valid
   IdBuf time_id_, time_name_;
   IdBuf tone_id_, tone_name_;
   IdBuf test_id_, test_name_;

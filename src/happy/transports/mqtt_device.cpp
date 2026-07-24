@@ -67,41 +67,42 @@ void MqttDevice::pump_queue() {
   if (!is_connected_.load(std::memory_order_acquire)) return;
 
   constexpr int MAX_IN_FLIGHT = 1;
+  topic_buf_t topic;
 
   for (Entity& entity : entities_) {
     // Only block if the ACK window is full
     if (pending_acks_.load(std::memory_order_acquire) >= MAX_IN_FLIGHT) return;
 
     if (entity.get_pending_flags() & Entity::FLAG_DISCOVERY) {
-      int msg_id = mqtt_enqueue(entity.get_discovery_topic().c_str(),
-                                entity.get_discovery_payload().c_str(), 1, 1);
+      entity.get_discovery_topic(topic);
+      int msg_id = mqtt_enqueue(topic, entity.get_discovery_payload().c_str(), 1, 1);
       if (msg_id >= 0) {
         entity.clear_flag(Entity::FLAG_DISCOVERY);
         pending_acks_.fetch_add(1, std::memory_order_relaxed);
       }
 
     } else if (entity.get_pending_flags() & Entity::FLAG_SUBSCRIBE) {
-      int msg_id = esp_mqtt_client_subscribe_single(client_, entity.get_command_topic().c_str(), 1);
+      entity.get_command_topic(topic);
+      int msg_id = esp_mqtt_client_subscribe_single(client_, topic, 1);
       if (msg_id >= 0) {
         entity.clear_flag(Entity::FLAG_SUBSCRIBE);
         pending_acks_.fetch_add(1, std::memory_order_relaxed);
-        ESP_LOGD(TAG, "Subscribed to topic: %s", entity.get_command_topic().c_str());
+        ESP_LOGD(TAG, "Subscribed to topic: %s", topic);
       } else if (msg_id == -2) {
-        ESP_LOGW(TAG, "Outbox full. Failed to subscribe to topic: %s",
-                 entity.get_command_topic().c_str());
+        ESP_LOGW(TAG, "Outbox full. Failed to subscribe to topic: %s", topic);
       } else if (msg_id == -1) {
-        ESP_LOGW(TAG, "Failed to subscribe to topic: %s", entity.get_command_topic().c_str());
+        ESP_LOGW(TAG, "Failed to subscribe to topic: %s", topic);
       }
 
     } else if (entity.get_pending_flags() & Entity::FLAG_STATE) {
+      entity.get_state_topic(topic);
       int qos = entity.get_state_qos();
       int retain = entity.get_state_retain();
 
       if (qos > 0) {
         // --- CRITICAL STATE (QoS 1) ---
         // Puts it in the sliding window. Must receive an ACK.
-        int msg_id = mqtt_enqueue(entity.get_state_topic().c_str(),
-                                  entity.get_state_payload().c_str(), qos, retain);
+        int msg_id = mqtt_enqueue(topic, entity.get_state_payload().c_str(), qos, retain);
         if (msg_id >= 0) {
           entity.clear_flag(Entity::FLAG_STATE);
           pending_acks_.fetch_add(1, std::memory_order_relaxed);
@@ -111,7 +112,7 @@ void MqttDevice::pump_queue() {
       } else {
         // --- EPHEMERAL TELEMETRY (QoS 0) ---
         // Fire and forget.
-        mqtt_enqueue(entity.get_state_topic().c_str(), entity.get_state_payload().c_str(), 0, 0);
+        mqtt_enqueue(topic, entity.get_state_payload().c_str(), 0, 0);
 
         // Unconditionally clear the flag to prevent deadlocks.
         // If the socket was full, this specific reading is dropped safely.

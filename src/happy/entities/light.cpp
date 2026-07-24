@@ -13,7 +13,11 @@ std::string Light::get_discovery_payload() const {
   this->inject_base_config(builder);
 
   builder.set("schema", "json");
-  builder.set("command_topic", command_topic_.c_str());
+
+  topic_buf_t command_topic;
+  get_command_topic(command_topic);
+  builder.set("command_topic", (const char*)command_topic);
+
   builder.set("optimistic", false);
 
   if (config_.icon) builder.set("icon", config_.icon);
@@ -41,10 +45,6 @@ std::string Light::get_state_payload() const {
   });
 
   return doc.to_string();
-}
-
-void Light::initialize_topics() {
-  initialize_base_topics(true);
 }
 
 void Light::handle_command(const std::string_view payload) {
