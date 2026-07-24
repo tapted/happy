@@ -2,7 +2,7 @@
 
 #include <cstdio>
 
-#include "espbase/json.h"
+#include "espbase/json.hpp"
 #include "espbase/nvs_store.hpp"
 #include "happy/device.hpp"
 

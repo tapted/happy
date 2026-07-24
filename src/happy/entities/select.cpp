@@ -1,7 +1,7 @@
 
 #include "happy/entities/select.hpp"
 
-#include "espbase/json.h"
+#include "espbase/json.hpp"
 #include <esp_log.h>
 
 namespace HAPPY::Entities {

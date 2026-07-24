@@ -2,7 +2,7 @@
 
 #include <esp_log.h>
 
-#include "espbase/json.h"
+#include "espbase/json.hpp"
 #include "happy/entity.hpp"
 
 namespace HAPPY {

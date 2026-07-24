@@ -70,6 +70,7 @@ class IntrusiveList {
   // Range-based for-loop support
   Iterator begin() const { return Iterator(head_); }
   Iterator end() const { return Iterator(nullptr); }
+  size_t count_items() const { return std::distance(begin(), end()); }
 
   bool empty() const { return head_ == nullptr; }
 

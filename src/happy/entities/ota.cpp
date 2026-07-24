@@ -9,7 +9,7 @@
 #include <string>
 #include <string_view>
 
-#include "espbase/json.h"
+#include "espbase/json.hpp"
 #include "espbase/nvs_store.hpp"
 
 namespace HAPPY::Entities {

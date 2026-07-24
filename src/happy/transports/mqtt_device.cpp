@@ -63,8 +63,24 @@ void MqttDevice::static_event_handler(void* handler_args, esp_event_base_t /*bas
 }
 
 void MqttDevice::pump_queue() {
+  static uint16_t pump_count = 0;
+  static bool was_disconnected = true;
+  static bool have_logged_since_reconnected = false;
+  
   // If we are offline, abort entirely. The flags stay safely set on the entities.
-  if (!is_connected_.load(std::memory_order_acquire)) return;
+  if (!is_connected_.load(std::memory_order_acquire)) {
+    was_disconnected = true;
+    return;
+  }
+
+  if (was_disconnected) {
+    ESP_LOGI(TAG, "Connected to broker. Pumping %zu entities.", entities_.count_items());
+    was_disconnected = false;
+    have_logged_since_reconnected = false;
+    pump_count = 0;
+  }
+
+  ++pump_count;
 
   constexpr int MAX_IN_FLIGHT = 1;
   topic_buf_t topic;
@@ -120,10 +136,9 @@ void MqttDevice::pump_queue() {
       }
     }
   }
-  static int pump_count = 0;
-  ++pump_count;
-  if (is_idle()) {
-    ESP_LOGD(TAG, "Idle after %d pumps", pump_count);
+  if (!have_logged_since_reconnected && is_idle()) {
+    ESP_LOGD(TAG, "All entities pumped after %d pumps", int{pump_count});
+    have_logged_since_reconnected = true;
   }
 }
 
