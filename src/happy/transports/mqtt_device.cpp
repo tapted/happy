@@ -66,7 +66,7 @@ void MqttDevice::pump_queue() {
   static uint16_t pump_count = 0;
   static bool was_disconnected = true;
   static bool have_logged_since_reconnected = false;
-  
+
   // If we are offline, abort entirely. The flags stay safely set on the entities.
   if (!is_connected_.load(std::memory_order_acquire)) {
     was_disconnected = true;
@@ -83,15 +83,17 @@ void MqttDevice::pump_queue() {
   ++pump_count;
 
   constexpr int MAX_IN_FLIGHT = 1;
+  int msg_id = 0;
   topic_buf_t topic;
+  topic[0] = '\0';
 
   for (Entity& entity : entities_) {
     // Only block if the ACK window is full
-    if (pending_acks_.load(std::memory_order_acquire) >= MAX_IN_FLIGHT) return;
+    if (pending_acks_.load(std::memory_order_acquire) >= MAX_IN_FLIGHT) break;
 
     if (entity.get_pending_flags() & Entity::FLAG_DISCOVERY) {
       entity.get_discovery_topic(topic);
-      int msg_id = mqtt_enqueue(topic, entity.get_discovery_payload().c_str(), 1, 1);
+      msg_id = mqtt_enqueue(topic, entity.get_discovery_payload().c_str(), 1, 1);
       if (msg_id >= 0) {
         entity.clear_flag(Entity::FLAG_DISCOVERY);
         pending_acks_.fetch_add(1, std::memory_order_relaxed);
@@ -99,7 +101,7 @@ void MqttDevice::pump_queue() {
 
     } else if (entity.get_pending_flags() & Entity::FLAG_SUBSCRIBE) {
       entity.get_command_topic(topic);
-      int msg_id = esp_mqtt_client_subscribe_single(client_, topic, 1);
+      msg_id = esp_mqtt_client_subscribe_single(client_, topic, 1);
       if (msg_id >= 0) {
         entity.clear_flag(Entity::FLAG_SUBSCRIBE);
         pending_acks_.fetch_add(1, std::memory_order_relaxed);
@@ -118,7 +120,7 @@ void MqttDevice::pump_queue() {
       if (qos > 0) {
         // --- CRITICAL STATE (QoS 1) ---
         // Puts it in the sliding window. Must receive an ACK.
-        int msg_id = mqtt_enqueue(topic, entity.get_state_payload().c_str(), qos, retain);
+        msg_id = mqtt_enqueue(topic, entity.get_state_payload().c_str(), qos, retain);
         if (msg_id >= 0) {
           entity.clear_flag(Entity::FLAG_STATE);
           pending_acks_.fetch_add(1, std::memory_order_relaxed);
@@ -128,7 +130,7 @@ void MqttDevice::pump_queue() {
       } else {
         // --- EPHEMERAL TELEMETRY (QoS 0) ---
         // Fire and forget.
-        mqtt_enqueue(topic, entity.get_state_payload().c_str(), 0, 0);
+        msg_id = mqtt_enqueue(topic, entity.get_state_payload().c_str(), 0, 0);
 
         // Unconditionally clear the flag to prevent deadlocks.
         // If the socket was full, this specific reading is dropped safely.
@@ -136,9 +138,13 @@ void MqttDevice::pump_queue() {
       }
     }
   }
+
   if (!have_logged_since_reconnected && is_idle()) {
-    ESP_LOGD(TAG, "All entities pumped after %d pumps", int{pump_count});
+    ESP_LOGI(TAG, "All entities pumped after %d pumps", int{pump_count});
     have_logged_since_reconnected = true;
+  } else if (!is_idle()) {
+    ESP_LOGD(TAG, "Pump %d complete. Pending ACKs: %d. Last topic: %s, last msg_id: %d",
+             int{pump_count}, int{pending_acks_.load(std::memory_order_acquire)}, topic, msg_id);
   }
 }
 
@@ -155,7 +161,7 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
       break;
 
     case MQTT_EVENT_CONNECTED:
-      ESP_LOGI(TAG, "Connected to Broker.");
+      ESP_LOGD(TAG, "Connected to Broker.");
       // 1. Mark online to unpause the pump
       is_connected_.store(true, std::memory_order_release);
       // 2. Erase any stranded ACKs from packets lost during the outage
@@ -185,6 +191,7 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
 
     case MQTT_EVENT_SUBSCRIBED:
     case MQTT_EVENT_PUBLISHED:
+    case MQTT_EVENT_DELETED:
       pending_acks_.fetch_sub(1, std::memory_order_release);
       pump_queue();
       break;

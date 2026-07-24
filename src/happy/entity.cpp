@@ -12,7 +12,7 @@ Entity::Entity(Device& device, const char* domain, const char* object_id, const 
                bool expects_commands)
     : device_(device), domain_(domain), object_id_(object_id), name_(name) {
   if (expects_commands) {
-    pending_flags_.fetch_or(EXPECTS_COMMANDS, std::memory_order_relaxed);
+    flags_.fetch_or(EXPECTS_COMMANDS, std::memory_order_relaxed);
   }
   // Register the entity with the device upon construction. This means the constructors can't be
   // constexpr/constinit. But the registration structs do not require a heap allocation, so this
@@ -21,7 +21,7 @@ Entity::Entity(Device& device, const char* domain, const char* object_id, const 
 }
 
 void Entity::request_publish() {
-  pending_flags_.fetch_or(FLAG_STATE, std::memory_order_release);
+  flags_.fetch_or(FLAG_STATE, std::memory_order_release);
   device_.poke();
 }
 
@@ -30,7 +30,7 @@ void Entity::request_discovery() {
   if (expects_commands()) {
     flags |= FLAG_SUBSCRIBE;
   }
-  pending_flags_.fetch_or(flags, std::memory_order_release);
+  flags_.fetch_or(flags, std::memory_order_release);
   device_.poke();
 }
 

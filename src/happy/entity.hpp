@@ -29,6 +29,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
   static constexpr uint8_t FLAG_DISCOVERY = 1 << 0;
   static constexpr uint8_t FLAG_SUBSCRIBE = 1 << 1;
   static constexpr uint8_t FLAG_STATE = 1 << 2;
+  static constexpr uint8_t PENDING_MASK = FLAG_DISCOVERY | FLAG_SUBSCRIBE | FLAG_STATE;
   static constexpr uint8_t EPHEMERAL_STATE_QOS = 1 << 3;
   static constexpr uint8_t RETAIN_STATE = 1 << 4;
   static constexpr uint8_t EXPECTS_COMMANDS = 1 << 5;
@@ -39,11 +40,11 @@ class Entity : public Core::IntrusiveNode<Entity> {
   void request_publish();
   void request_discovery();
 
-  uint8_t get_pending_flags() const { return pending_flags_.load(std::memory_order_acquire); }
-  int get_state_qos() const { return (get_pending_flags() & EPHEMERAL_STATE_QOS) ? 0 : 1; }
-  int get_state_retain() const { return (get_pending_flags() & RETAIN_STATE) ? 1 : 0; }
-  bool expects_commands() const { return (get_pending_flags() & EXPECTS_COMMANDS) != 0; }
-  void clear_flag(uint8_t flag) { pending_flags_.fetch_and(~flag, std::memory_order_release); }
+  uint8_t get_pending_flags() const { return get_flags() & PENDING_MASK; }
+  int get_state_qos() const { return (get_flags() & EPHEMERAL_STATE_QOS) ? 0 : 1; }
+  int get_state_retain() const { return (get_flags() & RETAIN_STATE) ? 1 : 0; }
+  bool expects_commands() const { return (get_flags() & EXPECTS_COMMANDS) != 0; }
+  void clear_flag(uint8_t flag) { flags_.fetch_and(~flag, std::memory_order_release); }
 
   virtual ~Entity() = default;
 
@@ -59,7 +60,9 @@ class Entity : public Core::IntrusiveNode<Entity> {
   virtual void handle_command(std::string_view /*payload*/) {}
 
  protected:
-  std::atomic<uint8_t> pending_flags_{0};
+  std::atomic<uint8_t> flags_{0};
+
+  uint8_t get_flags() const { return flags_.load(std::memory_order_acquire); }
 
   bool load_nvs_blob(void* dest, size_t size) const;
   void save_nvs_blob(const void* src, size_t size) const;
