@@ -16,12 +16,14 @@ std::string buf2str(const char (&buf)[N]) {
   return std::string(buf, strnlen(buf, N));
 }
 
+using topic_buf_t = char[128];
+
 class Entity : public Core::IntrusiveNode<Entity> {
  protected:
   Device& device_;  // Non-const to allow registration
-  std::string_view domain_;
-  std::string_view object_id_;
-  std::string_view name_;
+  const char* const domain_;
+  const char* const object_id_;
+  const char* const name_;
 
   std::string discovery_topic_;
   std::string state_topic_;
@@ -34,8 +36,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
   static constexpr uint8_t EPHEMERAL_STATE_QOS = 1 << 3;
   static constexpr uint8_t RETAIN_STATE = 1 << 4;
 
-  Entity(Device& device, std::string_view domain, std::string_view object_id,
-         std::string_view name);
+  Entity(Device& device, const char* domain, const char* object_id, const char* name);
 
   void request_publish();
   void request_discovery();

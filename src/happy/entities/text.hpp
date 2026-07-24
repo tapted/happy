@@ -19,7 +19,7 @@ class Text : public PersistentEntity<Text, TextState> {
     std::function<void(const Text&)> on_update = nullptr;
   };
 
-  Text(Device& device, std::string_view object_id, std::string_view name, Config config)
+  Text(Device& device, const char* object_id, const char* name, Config config)
       : PersistentEntity(device, "text", object_id, name), config_(config) {}
 
   void set_value(std::string_view new_value) {

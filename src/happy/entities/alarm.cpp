@@ -2,14 +2,12 @@
 
 namespace HAPPY::Entities {
 
-static std::string to_id(const char* prefix, uint8_t alarm_id, const char* suffix, char sep = '_') {
-  char buffer[32];
+AlarmController::IdBuf::IdBuf(const char* prefix, uint8_t alarm_id, const char* suffix, char sep) {
   if (suffix[0] == '\0') {
-    std::snprintf(buffer, sizeof(buffer), "%s%c%d", prefix, sep, alarm_id);
+    snprintf(buf_, sizeof(buf_), "%s%c%d", prefix, sep, alarm_id);
   } else {
-    std::snprintf(buffer, sizeof(buffer), "%s%c%d%c%s", prefix, sep, alarm_id, sep, suffix);
+    snprintf(buf_, sizeof(buf_), "%s%c%d%c%s", prefix, sep, alarm_id, sep, suffix);
   }
-  return std::string(buffer);
 }
 
 AlarmController::AlarmController(Device& device, uint8_t alarm_id,
@@ -20,14 +18,12 @@ AlarmController::AlarmController(Device& device, uint8_t alarm_id,
       on_test_(on_test),
 
       // We dynamically construct the IDs like "alarm_1_time"
-      // TODO: is this bad? time_,tone_,test_btn_ take std::string_view so we could _maybe_ pass
-      // a ref to a char[] buffer.
-      time_id_(to_id("alarm", id, "time")),
-      time_name_(to_id("Alarm", id, "Time", ' ')),
-      tone_id_(to_id("alarm", id, "tone")),
-      tone_name_(to_id("Alarm", id, "Tone", ' ')),
-      test_id_(to_id("alarm", id, "test")),
-      test_name_(to_id("Test Alarm", id, "", ' ')),
+      time_id_("alarm", id, "time"),
+      time_name_("Alarm", id, "Time", ' '),
+      tone_id_("alarm", id, "tone"),
+      tone_name_("Alarm", id, "Tone", ' '),
+      test_id_("alarm", id, "test"),
+      test_name_("Test Alarm", id, "", ' '),
 
       // Initialize the entities directly attached to the device registry
       time_(device, time_id_, time_name_,

@@ -19,7 +19,7 @@ class Select : public PersistentEntity<Select, SelectState> {
     std::function<void(const Select&)> on_update = nullptr;
   };
 
-  Select(Device& device, std::string_view object_id, std::string_view name, Config config)
+  Select(Device& device, const char* object_id, const char* name, Config config)
       : PersistentEntity(device, "select", object_id, name), config_(std::move(config)) {}
 
   bool empty() const { return config_.options.empty(); }

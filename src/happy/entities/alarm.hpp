@@ -34,6 +34,13 @@ namespace HAPPY::Entities {
 // ```
 class AlarmController {
  public:
+  class IdBuf {
+   public:
+    IdBuf(const char* prefix, uint8_t alarm_id, const char* suffix, char sep = '_');
+    operator const char*() const { return buf_; }
+    char buf_[16];
+  };
+
   const uint8_t id;
 
   using OnAlarmUpdateCallback = std::function<void(const AlarmController&)>;
@@ -49,9 +56,9 @@ class AlarmController {
   OnAlarmUpdateCallback on_test_;
 
   // We store the strings here so the std::string_views in the Entities stay valid
-  std::string time_id_, time_name_;
-  std::string tone_id_, tone_name_;
-  std::string test_id_, test_name_;
+  IdBuf time_id_, time_name_;
+  IdBuf tone_id_, tone_name_;
+  IdBuf test_id_, test_name_;
 
   Time time_;
   Select tone_;

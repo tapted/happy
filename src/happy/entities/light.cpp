@@ -64,8 +64,8 @@ void Light::handle_command(const std::string_view payload) {
     color.change(state.b, "b");
   }
 
-  ESP_LOGD("Light", "Command received for %s: %.*s", object_id_.data(),
-           static_cast<int>(payload.length()), payload.data());
+  ESP_LOGD("Light", "Command received for %s: %.*s", object_id_, static_cast<int>(payload.length()),
+           payload.data());
   ESP_LOGD("Light", "New state: is_on=%d, brightness=%d, r=%d, g=%d, b=%d", state.is_on,
            state.brightness, state.r, state.g, state.b);
   set_state(state);

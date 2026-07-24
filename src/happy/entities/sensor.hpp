@@ -21,7 +21,7 @@ class Sensor : public Entity {
     std::function<std::string()> get_value = nullptr;
   };
 
-  Sensor(Device& device, std::string_view object_id, std::string_view name, Config config)
+  Sensor(Device& device, const char* object_id, const char* name, Config config)
       : Entity(device, "sensor", object_id, name), config_(std::move(config)) {}
 
   void initialize_topics() override;

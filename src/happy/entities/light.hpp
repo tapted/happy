@@ -41,7 +41,7 @@ class Light : public PersistentEntity<Light, LightState> {
     void (*on_update)(const Light&) = nullptr;
   };
 
-  Light(Device& device, std::string_view object_id, std::string_view name, Config config)
+  Light(Device& device, const char* object_id, const char* name, Config config)
       : PersistentEntity<Light, LightState>(device, "light", object_id, name),
         config_(std::move(config)) {}
 

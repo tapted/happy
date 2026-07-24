@@ -1,18 +1,11 @@
 #include "happy/entities/sensor.hpp"
 
 #include "espbase/json.h"
-#include "happy/device.hpp"
 
 namespace HAPPY::Entities {
 
 void Sensor::initialize_topics() {
   initialize_base_topics(false);
-
-  // Override the shared state_topic to be isolated for this specific sensor
-  char buf[64];
-  std::snprintf(buf, sizeof(buf), "%s/%.*s/state", device_.get_identifier(),
-                static_cast<int>(object_id_.length()), object_id_.data());
-  state_topic_ = buf;
 }
 
 std::string Sensor::get_discovery_payload() const {

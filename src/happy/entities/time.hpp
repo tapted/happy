@@ -12,14 +12,14 @@ struct TimeState {
   uint8_t second_ = 0;
 };
 
-class Time : public  PersistentEntity<Time, TimeState> {
+class Time : public PersistentEntity<Time, TimeState> {
  public:
   struct Config {
     const char* icon = "mdi:alarm";
     std::function<void(const Time&)> on_update = nullptr;
   };
 
-  Time(Device& device, std::string_view object_id, std::string_view name, Config config)
+  Time(Device& device, const char* object_id, const char* name, Config config)
       : PersistentEntity(device, "time", object_id, name), config_(std::move(config)) {}
 
   uint8_t hour() const { return state().hour_; }

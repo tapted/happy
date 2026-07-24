@@ -15,7 +15,7 @@ class Button : public Entity {
     std::function<void(const Button&)> on_press = nullptr;
   };
 
-  Button(Device& device, std::string_view object_id, std::string_view name, Config config)
+  Button(Device& device, const char* object_id, const char* name, Config config)
       : Entity(device, "button", object_id, name), config_(std::move(config)) {}
 
   void initialize_topics() override;

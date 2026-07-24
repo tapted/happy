@@ -32,7 +32,10 @@ TEST_F(SensorEntityTest, DiscoveryAndInitialStatePublication) {
   EXPECT_EQ(discovery_call->qos, 1);
   EXPECT_EQ(discovery_call->retain, 1);
 
-#if 0
+  // Since we're building with cJSON, the order of the keys in the JSON payload is not guaranteed,
+  // so we parse it and check the individual fields instead of doing a string comparison.
+  // One day.. I should probably ditch cJSON and hardcode JSON templates.
+#if 1
   // Parse discovery JSON payload
   cJSON* root = cJSON_Parse(discovery_call->payload.c_str());
   ASSERT_NE(root, nullptr) << "Failed to parse discovery JSON payload";
