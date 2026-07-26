@@ -6,7 +6,7 @@
 
 namespace HAPPY::Entities {
 
-std::string Select::get_discovery_payload() const {
+std::string Select::get_discovery_payload() {
   JsonDocument doc;
   JsonObjectBuilder builder(doc.get());
   this->inject_base_config(builder);
@@ -27,7 +27,7 @@ std::string Select::get_discovery_payload() const {
   return doc.to_string();
 }
 
-std::string Select::get_state_payload() const {
+std::string Select::get_state_payload() {
   return std::string(get_selected());  // Select state is just the plain text string
 }
 

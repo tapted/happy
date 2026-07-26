@@ -18,7 +18,7 @@ class Button : public Entity {
   Button(Device& device, const char* object_id, const char* name, Config config)
       : Entity(device, "button", object_id, name, true), config_(std::move(config)) {}
 
-  std::string get_discovery_payload() const override;
+  std::string get_discovery_payload() override;
   void handle_command(std::string_view payload) override;
 
  private:

@@ -30,8 +30,8 @@ class Text : public PersistentEntity<Text, TextState> {
   }
   std::string_view get_value() const { return state().value; }
 
-  std::string get_discovery_payload() const override;
-  std::string get_state_payload() const override;
+  std::string get_discovery_payload() override;
+  std::string get_state_payload() override;
   void handle_command(std::string_view payload) override;
 
   void on_change() override {

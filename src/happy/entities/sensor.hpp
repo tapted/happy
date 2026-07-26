@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <string>
 
 #include "happy/entity.hpp"
@@ -17,23 +16,27 @@ class Sensor : public Entity {
     // TODO: Add a "state_class" field for sensors that have a state class.
 
     // The lambda that fetches the real-time value
-    // TODO: Make this a regular function pointer so configs can be constexpr.
-    std::function<std::string()> get_value = nullptr;
+    std::string (*get_value)(void*) = nullptr;
   };
 
-  Sensor(Device& device, const char* object_id, const char* name, Config config)
-      : Entity(device, "sensor", object_id, name), config_(std::move(config)) {}
+  Sensor(Device& device, const char* object_id, const char* name, Config config,
+         void* user_ctx = nullptr)
+      : Entity(device, "sensor", object_id, name), config_(std::move(config)), user_ctx(user_ctx) {}
 
-  std::string get_discovery_payload() const override;
+  std::string get_discovery_payload() override;
 
   // Evaluates the lambda to get the current ESP32 state
-  std::string get_state_payload() const override {
-    if (config_.get_value) return config_.get_value();
+  std::string get_state_payload() override {
+    if (config_.get_value) return config_.get_value(user_ctx);
     return "unknown";
   }
 
  private:
-  Config config_;
+  // We copy config_. We could store a const reference (and delete the Sensor constructor that would
+  // take a `Config&&` for safety). But it only saves 16 bytes per sensor and could be annoying to
+  // force callers to make their configs static.
+  const Config config_;
+  void* user_ctx = nullptr;  // User context for the get_value lambda.
 };
 
 }  // namespace HAPPY::Entities

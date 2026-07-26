@@ -4,7 +4,7 @@
 
 namespace HAPPY::Entities {
   
-std::string Button::get_discovery_payload() const {
+std::string Button::get_discovery_payload() {
   JsonDocument doc;
   JsonObjectBuilder builder(doc.get());
   this->inject_base_config(builder);

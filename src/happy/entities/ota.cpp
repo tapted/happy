@@ -11,6 +11,7 @@
 
 #include "espbase/json.hpp"
 #include "espbase/nvs_store.hpp"
+#include "espbase/trampoline.hpp"
 
 namespace HAPPY::Entities {
 
@@ -122,6 +123,7 @@ void OtaController::ota_step(EspTask<OtaController>& task) {
 OtaController::OtaController(Device& device, const char* base_version)
     : current_version_(base_version),
       server_url_(device, "ota_server", "OTA Server IP", {.icon = "mdi:server-network"}),
+      // TODO: default this to esp_app_get_description()->project_name
       project_name_(device, "ota_project", "OTA Project Name",
                     {.icon = "mdi:application-brackets"}),
       update_btn_(device, "ota_trigger", "Check & Apply Update",
@@ -132,16 +134,15 @@ OtaController::OtaController(Device& device, const char* base_version)
       current_version_sensor_(device, "current_version", "Running Firmware Version",
                               {
                                   .icon = "mdi:tag-check",
-                                  .get_value = [this]() -> std::string { return current_version_; },
-                              }),
-      base_version_sensor_(device, "base_version", "Compiled Base Version",
-                           {
-                               .icon = "mdi:tag-outline",
-                               .get_value = []() -> std::string {
-                                 const esp_app_desc_t* desc = esp_app_get_description();
-                                 return desc ? buf2str(desc->version) : "unknown";
-                               },
-                           }) {
+                                  .get_value = trampoline<&OtaController::get_current_version>(),
+                              },
+                              this),
+      base_version_sensor_(
+          device, "base_version", "Compiled Base Version",
+          {
+              .icon = "mdi:tag-outline",
+              .get_value = [](void*) -> std::string { return esp_app_get_description()->version; },
+          }) {
   // Load the dynamically installed version from NVS if it exists.
   auto store = NvsStore::open(NAMESPACE, NVS_READONLY);
   if (store) {

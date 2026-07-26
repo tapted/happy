@@ -6,7 +6,7 @@
 
 namespace HAPPY::Entities {
 
-std::string Time::get_discovery_payload() const {
+std::string Time::get_discovery_payload() {
   JsonDocument doc;
   JsonObjectBuilder builder(doc.get());
   this->inject_base_config(builder);
@@ -20,7 +20,7 @@ std::string Time::get_discovery_payload() const {
   return doc.to_string();
 }
 
-std::string Time::get_state_payload() const {
+std::string Time::get_state_payload() {
   char buffer[12];  // "HH:MM:SS" + null terminator
   std::snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", hour(), minute(), second());
   return std::string(buffer);

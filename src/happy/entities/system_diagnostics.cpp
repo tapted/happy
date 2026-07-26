@@ -15,7 +15,7 @@
 
 #include "espbase/esp_result.hpp"
 
-static std::string get_temperature_celsius() {
+static std::string get_temperature_celsius(void*) {
   static auto sensor = []() -> EspResult<temperature_sensor_handle_t> {
     temperature_sensor_handle_t temp_handle;
     temperature_sensor_config_t temp_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(20, 50);
@@ -37,7 +37,7 @@ static std::string get_temperature_celsius() {
   return "unknown";
 }
 
-static const char* get_reset_reason_str() {
+static std::string get_reset_reason_str(void*) {
   switch (esp_reset_reason()) {
     case ESP_RST_UNKNOWN:
       return "Unknown";
@@ -76,7 +76,7 @@ static const char* get_reset_reason_str() {
   }
 }
 
-static std::string get_firmware_size_once() {
+static std::string get_firmware_size_once(void*) {
   static std::string firmware_size = []() -> std::string {
     const esp_partition_t* running = esp_ota_get_running_partition();
     if (!running) return "unknown";
@@ -91,7 +91,7 @@ static std::string get_firmware_size_once() {
   return firmware_size;
 }
 
-static std::string get_boot_time_iso() {
+static std::string get_boot_time_iso(void*) {
   time_t now;
   time(&now);
 
@@ -111,7 +111,7 @@ static std::string get_boot_time_iso() {
   return std::string(buf);
 }
 
-static std::string get_ip_address() {
+static std::string get_ip_address(void*) {
   // 1. Grab the default Wi-Fi Station network interface
   esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
   if (!netif) {
@@ -132,92 +132,100 @@ static std::string get_ip_address() {
 
 namespace HAPPY::Entities {
 
-SystemDiagnostics::SystemDiagnostics(Device& device)
-    : boot_time_(device, "boot_time", "Boot Time",
-                 {
-                     .device_class = "timestamp",
-                     .icon = "mdi:clock-start",
-                     .get_value = get_boot_time_iso,
-                 }),
-      reboot_reason_(device, "reboot_reason", "Reboot Reason",
-                     {
-                         .icon = "mdi:restart",
-                         .get_value = get_reset_reason_str,
-                     }),
-      compile_date_(device, "compile_date", "Firmware Build",
-                    {
-                        .icon = "mdi:wrench-clock",
-                        .get_value =
-                            []() {
-                              const esp_app_desc_t* desc = esp_app_get_description();
-                              char buf[64];
-                              snprintf(buf, sizeof(buf), "%.*s %.*s UTC", sizeof(desc->date),
-                                       desc->date, sizeof(desc->time), desc->time);
-                              return std::string(buf);
-                            },
-                    }),
-      free_iram_(
-          device, "free_iram", "Free Internal RAM",
-          {
-              .device_class = "data_size",
-              .unit_of_measurement = "B",
-              .icon = "mdi:memory",
-              .get_value =
-                  []() { return std::to_string(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)); },
-          }),
-      free_spiram_(
-          device, "free_spiram", "Free External RAM",
-          {
-              .device_class = "data_size",
-              .unit_of_measurement = "B",
-              .icon = "mdi:expansion-card",
-              .get_value =
-                  []() { return std::to_string(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)); },
-          }),
-      firmware_size_(device, "firmware_size", "App Image Size",
-                     {
-                         .device_class = "data_size",
-                         .unit_of_measurement = "B",
-                         .icon = "mdi:file-code-outline",
-                         .get_value = get_firmware_size_once,
-                     }),
+static constexpr Sensor::Config boot_time = {
+    .device_class = "timestamp",
+    .icon = "mdi:clock-start",
+    .get_value = get_boot_time_iso,
+};
 
-      ota_partition_size_(device, "ota_partition_size", "OTA Partition Size",
-                          {
-                              .device_class = "data_size",
-                              .unit_of_measurement = "B",
-                              .icon = "mdi:folder-table",
-                              .get_value = []() -> std::string {
-                                const esp_partition_t* running = esp_ota_get_running_partition();
-                                if (running) {
-                                  return std::to_string(running->size);
-                                }
-                                return "unknown";
-                              },
-                          }),
-      fs_used_space_(device, "fs_used_space", "Filesystem Used Space",
-                     {
-                         .device_class = "data_size",
-                         .unit_of_measurement = "B",
-                         .icon = "mdi:harddisk",
-                         .get_value = []() -> std::string {
-                           struct statvfs stat;
-                           if (statvfs("/fs", &stat) == 0) {
-                             size_t used = (stat.f_blocks - stat.f_bfree) * stat.f_frsize;
-                             return std::to_string(used);
-                           }
-                           return "unknown";
-                         },
-                     }),
-      ip_address_(device, "ip_address", "IP Address",
-                  {.icon = "mdi:ip-network", .get_value = get_ip_address}),
-      temperature_(device, "temperature", "Temperature (Celsius)",
-                   {
-                       .device_class = "temperature",
-                       .unit_of_measurement = "°C",
-                       .icon = "mdi:thermometer",
-                       .get_value = get_temperature_celsius,
-                   }) {
+static constexpr Sensor::Config reboot_reason = {
+    .icon = "mdi:restart",
+    .get_value = get_reset_reason_str,
+};
+
+static constexpr Sensor::Config compile_date = {
+    .icon = "mdi:wrench-clock",
+    .get_value =
+        [](void*) {
+          const esp_app_desc_t* desc = esp_app_get_description();
+          char buf[64];
+          snprintf(buf, sizeof(buf), "%.*s %.*s UTC", sizeof(desc->date), desc->date,
+                   sizeof(desc->time), desc->time);
+          return std::string(buf);
+        },
+};
+
+static constexpr Sensor::Config free_iram = {
+    .device_class = "data_size",
+    .unit_of_measurement = "B",
+    .icon = "mdi:memory",
+    .get_value = [](void*) { return std::to_string(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)); },
+};
+
+static constexpr Sensor::Config free_spiram = {
+    .device_class = "data_size",
+    .unit_of_measurement = "B",
+    .icon = "mdi:expansion-card",
+    .get_value = [](void*) { return std::to_string(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)); },
+};
+
+static constexpr Sensor::Config firmware_size = {
+    .device_class = "data_size",
+    .unit_of_measurement = "B",
+    .icon = "mdi:file-code-outline",
+    .get_value = get_firmware_size_once,
+};
+
+static constexpr Sensor::Config ota_partition_size = {
+    .device_class = "data_size",
+    .unit_of_measurement = "B",
+    .icon = "mdi:folder-table",
+    .get_value = [](void*) -> std::string {
+      const esp_partition_t* running = esp_ota_get_running_partition();
+      if (running) {
+        return std::to_string(running->size);
+      }
+      return "unknown";
+    },
+};
+
+static constexpr Sensor::Config fs_used_space = {
+    .device_class = "data_size",
+    .unit_of_measurement = "B",
+    .icon = "mdi:harddisk",
+    .get_value = [](void*) -> std::string {
+      struct statvfs stat;
+      if (statvfs("/fs", &stat) == 0) {
+        size_t used = (stat.f_blocks - stat.f_bfree) * stat.f_frsize;
+        return std::to_string(used);
+      }
+      return "unknown";
+    },
+};
+
+static constexpr Sensor::Config ip_address = {
+    .icon = "mdi:ip-network",
+    .get_value = get_ip_address,
+};
+
+static constexpr Sensor::Config temperature = {
+    .device_class = "temperature",
+    .unit_of_measurement = "°C",
+    .icon = "mdi:thermometer",
+    .get_value = get_temperature_celsius,
+};
+
+SystemDiagnostics::SystemDiagnostics(Device& device)
+    : boot_time_(device, "boot_time", "Boot Time", boot_time),
+      reboot_reason_(device, "reboot_reason", "Reboot Reason", reboot_reason),
+      compile_date_(device, "compile_date", "Firmware Build", compile_date),
+      free_iram_(device, "free_iram", "Free Internal RAM", free_iram),
+      free_spiram_(device, "free_spiram", "Free External RAM", free_spiram),
+      firmware_size_(device, "firmware_size", "App Image Size", firmware_size),
+      ota_partition_size_(device, "ota_partition_size", "OTA Partition Size", ota_partition_size),
+      fs_used_space_(device, "fs_used_space", "Filesystem Used Space", fs_used_space),
+      ip_address_(device, "ip_address", "IP Address", ip_address),
+      temperature_(device, "temperature", "Temperature (Celsius)", temperature) {
 }
 
 void SystemDiagnostics::publish_all() {
