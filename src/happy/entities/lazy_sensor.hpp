@@ -34,19 +34,26 @@ class AbstractSensorState {
 template <typename T>
 class SensorState : public AbstractSensorState {
  public:
-  using refresh_t = void (*)();
+  using refresh_t = bool (*)();
   using fetch_t = T (*)();
   using formatter_t = std::string (*)(const T&);
 
   constexpr SensorState(refresh_t refresh_cb, fetch_t fetch_cb, formatter_t formatter = nullptr)
-      : refresh_cb_(refresh_cb), fetch_cb_(fetch_cb), formatter_(formatter) {}
+      : refresh_cb_(refresh_cb), fetch_cb_(fetch_cb), formatter_(formatter) {
+    needs_successful_refresh_ = refresh_cb_ != nullptr;
+  }
 
   void refresh() override {
-    if (refresh_cb_) refresh_cb_();
+    if (!refresh_cb_) return;
+
+    bool success = refresh_cb_();
+    if (success && needs_successful_refresh_) {
+      needs_successful_refresh_ = false;
+    }
   }
 
   bool needs_publish() override {
-    if (!has_published_) return true;  // Always publish the very first reading
+    if (needs_successful_refresh_) return false;
 
     T current_val = fetch_cb_();
 
@@ -59,8 +66,9 @@ class SensorState : public AbstractSensorState {
   }
 
   std::string get_payload() override {
+    if (needs_successful_refresh_) return "unknown";
+
     T current_val = fetch_cb_();
-    has_published_ = true;
     last_published_value_ = current_val;
 
     if (formatter_) {
@@ -82,7 +90,7 @@ class SensorState : public AbstractSensorState {
   formatter_t formatter_;
 
   T last_published_value_{};
-  bool has_published_ = false;
+  bool needs_successful_refresh_ = false;
 };
 
 class LazySensor : public Sensor {

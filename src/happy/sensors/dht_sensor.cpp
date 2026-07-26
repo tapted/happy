@@ -8,13 +8,13 @@
 
 namespace HAPPY::Sensors {
 
-void DhtSensorReader::update() {
+bool DhtSensorReader::update() {
   uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
   // The DHT sensors require ~2 seconds of hardware recovery time between reads.
   // If we are polled twice in quick succession, skip the hardware read entirely!
-  if (has_read_ && (now - last_read_ms_ < 3000)) {
-    return;
+  if (has_read_ && (now - last_read_ms_ < 5000)) {
+    return false;
   }
 
   EspResult<DHTReading> res = read();
@@ -23,10 +23,12 @@ void DhtSensorReader::update() {
     hum_tenths_ = res->humidity_tenths;
     last_read_ms_ = now;
     has_read_ = true;
-  } else {
-    // DHT driver handles checksum failures and physical timeouts internally
-    res.strip().log_error("DhtSensorReader", "Failed to read DHT sensor");
+    return true;
   }
+
+  // DHT driver handles checksum failures and physical timeouts internally
+  res.strip().log_error("DhtSensorReader", "Failed to read DHT sensor");
+  return false;
 }
 
 EspResult<DHTReading> DhtSensorReader::read() {

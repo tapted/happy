@@ -49,7 +49,8 @@ class DhtSensorReader {
   constexpr DhtSensorReader(gpio_num_t pin = GPIO_NUM_4, DHTType type = DHTType::DHT11)
       : pin_(pin), type_(type) {}
 
-  void update();
+  // Returns true on success.
+  bool update();
 
   int16_t get_temp() const { return temp_tenths_; }
   int16_t get_humidity() const { return hum_tenths_; }
