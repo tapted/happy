@@ -1,11 +1,10 @@
 #include "happy/sensors/dht_sensor.hpp"
 
+#if __has_include(<dht.h>)
 #include <dht.h>
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
-
-#include "espbase/esp_result.hpp"
 
 namespace HAPPY::Sensors {
 
@@ -54,3 +53,7 @@ EspResult<DHTReading> DhtSensorReader::read() {
 }
 
 }  // namespace HAPPY::Sensors
+
+#else
+#pragma message("Install esp-idf-lib/dht to use DHT sensors")
+#endif
