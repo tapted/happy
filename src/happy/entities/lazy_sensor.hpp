@@ -17,6 +17,16 @@ inline std::string format_tenths(const int16_t& val) {
   return std::string(buf);
 }
 
+// The core interface for hardware polling
+class SensorReader {
+ public:
+  constexpr SensorReader() = default;
+  virtual ~SensorReader() = default;
+
+  // Returns true on a successful refresh.
+  virtual bool refresh() = 0;
+};
+
 class AbstractSensorState {
  public:
   virtual ~AbstractSensorState() = default;
@@ -34,19 +44,14 @@ class AbstractSensorState {
 template <typename T>
 class SensorState : public AbstractSensorState {
  public:
-  using refresh_t = bool (*)();
   using fetch_t = T (*)();
   using formatter_t = std::string (*)(const T&);
 
-  constexpr SensorState(refresh_t refresh_cb, fetch_t fetch_cb, formatter_t formatter = nullptr)
-      : refresh_cb_(refresh_cb), fetch_cb_(fetch_cb), formatter_(formatter) {
-    needs_successful_refresh_ = refresh_cb_ != nullptr;
-  }
+  constexpr SensorState(SensorReader& reader, fetch_t fetch_cb, formatter_t formatter = nullptr)
+      : reader_(reader), fetch_cb_(fetch_cb), formatter_(formatter) {}
 
   void refresh() override {
-    if (!refresh_cb_) return;
-
-    bool success = refresh_cb_();
+    bool success = reader_.refresh();
     if (success && needs_successful_refresh_) {
       needs_successful_refresh_ = false;
     }
@@ -71,9 +76,7 @@ class SensorState : public AbstractSensorState {
     T current_val = fetch_cb_();
     last_published_value_ = current_val;
 
-    if (formatter_) {
-      return formatter_(current_val);
-    }
+    if (formatter_) return formatter_(current_val);
 
     if constexpr (std::is_floating_point_v<T>) {
       char buf[32];
@@ -85,12 +88,12 @@ class SensorState : public AbstractSensorState {
   }
 
  private:
-  refresh_t refresh_cb_;
+  SensorReader& reader_;
   fetch_t fetch_cb_;
   formatter_t formatter_;
 
   T last_published_value_{};
-  bool needs_successful_refresh_ = false;
+  bool needs_successful_refresh_ = true;
 };
 
 class LazySensor : public Sensor {
@@ -118,6 +121,20 @@ class LazySensor : public Sensor {
     config.get_value = trampoline<&AbstractSensorState::get_payload>();
     return config;
   }
+};
+
+// The all-in-one wrapper that owns its state.
+template <typename T>
+class StatefulSensor : public LazySensor {
+ public:
+  StatefulSensor(Device& device, const char* object_id, const char* name, Config config,
+                 SensorReader& reader, typename SensorState<T>::fetch_t fetch_cb,
+                 typename SensorState<T>::formatter_t formatter = nullptr)
+      : LazySensor(device, object_id, name, std::move(config), &state_),
+        state_(reader, fetch_cb, formatter) {}
+
+ private:
+  SensorState<T> state_;
 };
 
 }  // namespace HAPPY::Entities

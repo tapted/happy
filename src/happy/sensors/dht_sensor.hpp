@@ -3,6 +3,7 @@
 #include <driver/gpio.h>
 
 #include "espbase/esp_result.hpp"
+#include "happy/entities/lazy_sensor.hpp"
 
 // idf_component.yml
 //   esp-idf-lib/dht: '^1.2.*'
@@ -44,13 +45,12 @@ struct DHTReading {
   int16_t humidity_tenths;
 };
 
-class DhtSensorReader {
+class DhtSensorReader: public HAPPY::Entities::SensorReader {
  public:
   constexpr DhtSensorReader(gpio_num_t pin = GPIO_NUM_4, DHTType type = DHTType::DHT11)
       : pin_(pin), type_(type) {}
 
-  // Returns true on success.
-  bool update();
+  bool refresh() override;
 
   int16_t get_temp() const { return temp_tenths_; }
   int16_t get_humidity() const { return hum_tenths_; }

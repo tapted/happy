@@ -8,7 +8,7 @@
 
 namespace HAPPY::Sensors {
 
-bool DhtSensorReader::update() {
+bool DhtSensorReader::refresh() {
   uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
   // The DHT sensors require ~2 seconds of hardware recovery time between reads and at boot time.
