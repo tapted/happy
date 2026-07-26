@@ -62,7 +62,6 @@ class DhtSensorReader {
   DHTType type_;
 
   uint32_t last_read_ms_ = 0;
-  bool has_read_ = false;
   int16_t temp_tenths_ = 0;
   int16_t hum_tenths_ = 0;
 };

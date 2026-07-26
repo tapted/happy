@@ -11,9 +11,9 @@ namespace HAPPY::Sensors {
 bool DhtSensorReader::update() {
   uint32_t now = xTaskGetTickCount() * portTICK_PERIOD_MS;
 
-  // The DHT sensors require ~2 seconds of hardware recovery time between reads.
-  // If we are polled twice in quick succession, skip the hardware read entirely!
-  if (has_read_ && (now - last_read_ms_ < 5000)) {
+  // The DHT sensors require ~2 seconds of hardware recovery time between reads and at boot time.
+  // If we are polled early, or twice in quick succession, skip the hardware read entirely!
+  if (now - last_read_ms_ < 3000) {
     return false;
   }
 
@@ -22,7 +22,6 @@ bool DhtSensorReader::update() {
     temp_tenths_ = res->temperature_tenths;
     hum_tenths_ = res->humidity_tenths;
     last_read_ms_ = now;
-    has_read_ = true;
     return true;
   }
 
@@ -47,6 +46,10 @@ EspResult<DHTReading> DhtSensorReader::read() {
     default:
       return ESP_ERR_INVALID_ARG;
   }
+  // TODO: Investigate whether this is needed:
+  // Force the ESP32's internal pull-up resistor on GPIO pin
+  // gpio_set_pull_mode(pin, GPIO_PULLUP_ONLY);
+
   if (EspError err =
           dht_read_data(type, pin_, &reading.humidity_tenths, &reading.temperature_tenths)) {
     return err;
