@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cmath>
 #include <string>
 #include <type_traits>
 
@@ -10,12 +9,7 @@
 namespace HAPPY::Entities {
 
 // A reusable, allocation-free formatter for tenths-of-a-degree integers
-inline std::string format_tenths(const int16_t& val) {
-  char buf[16];
-  int abs_val = std::abs(val);
-  snprintf(buf, sizeof(buf), "%s%d.%d", (val < 0) ? "-" : "", abs_val / 10, abs_val % 10);
-  return std::string(buf);
-}
+std::string format_tenths(const int16_t& val);
 
 // The core interface for hardware polling
 class SensorReader {
@@ -29,16 +23,32 @@ class SensorReader {
 
 class AbstractSensorState {
  public:
+  explicit AbstractSensorState(SensorReader& reader) : reader_(reader) {}
   virtual ~AbstractSensorState() = default;
 
   // Triggers the underlying hardware reader to fetch new data (if necessary)
-  virtual void refresh() = 0;
+  void refresh() {
+    bool success = reader_.refresh();
+    if (success) needs_successful_refresh_ = false;  // Sticky after the first successful refresh.
+  }
 
   // Evaluates the current cached value against the last published value
-  virtual bool needs_publish() = 0;
+  bool needs_publish() { return !needs_successful_refresh_ && value_changed(); }
 
   // Returns the string payload and internally updates the last_published_value marker
-  virtual std::string get_payload() = 0;
+  std::string get_payload() {
+    return needs_successful_refresh_ ? "unknown" : get_payload_after_refresh();
+  }
+
+ protected:
+  // Returns true if the cached value has changed since the last publish
+  virtual bool value_changed() = 0;
+
+  // Returns the string payload after a refresh() has been called. Updates the last_published_value
+  virtual std::string get_payload_after_refresh() = 0;
+
+  SensorReader& reader_;
+  bool needs_successful_refresh_ = true;
 };
 
 template <typename T>
@@ -48,31 +58,24 @@ class SensorState : public AbstractSensorState {
   using formatter_t = std::string (*)(const T&);
 
   constexpr SensorState(SensorReader& reader, fetch_t fetch_cb, formatter_t formatter = nullptr)
-      : reader_(reader), fetch_cb_(fetch_cb), formatter_(formatter) {}
+      : AbstractSensorState(reader), fetch_cb_(fetch_cb), formatter_(formatter) {}
 
-  void refresh() override {
-    bool success = reader_.refresh();
-    if (success && needs_successful_refresh_) {
-      needs_successful_refresh_ = false;
-    }
-  }
+ private:
+  fetch_t fetch_cb_;
+  formatter_t formatter_;
+  T last_published_value_{};
 
-  bool needs_publish() override {
-    if (needs_successful_refresh_) return false;
-
+  bool value_changed() override {
     T current_val = fetch_cb_();
 
     if constexpr (std::is_floating_point_v<T>) {
       // Small epsilon check to prevent floating-point analog jitter from spamming the network
       return std::abs(current_val - last_published_value_) > 0.05f;
-    } else {
-      return current_val != last_published_value_;
     }
+    return current_val != last_published_value_;
   }
 
-  std::string get_payload() override {
-    if (needs_successful_refresh_) return "unknown";
-
+  std::string get_payload_after_refresh() override {
     T current_val = fetch_cb_();
     last_published_value_ = current_val;
 
@@ -80,42 +83,27 @@ class SensorState : public AbstractSensorState {
 
     if constexpr (std::is_floating_point_v<T>) {
       char buf[32];
-      snprintf(buf, sizeof(buf), "%.1f", current_val);
+      snprintf(buf, sizeof(buf), "%.4f", current_val);
       return std::string(buf);
-    } else {
-      return std::to_string(current_val);
     }
+    return std::to_string(current_val);
   }
-
- private:
-  SensorReader& reader_;
-  fetch_t fetch_cb_;
-  formatter_t formatter_;
-
-  T last_published_value_{};
-  bool needs_successful_refresh_ = true;
 };
 
+// Sensor that reads from a stateful container tracking the last published value.
 class LazySensor : public Sensor {
  public:
   LazySensor(Device& device, const char* object_id, const char* name, Config config,
              AbstractSensorState* state)
       : Sensor(device, object_id, name, patch_config(std::move(config)), state), state_(state) {}
 
-  void publish_if_changed() override {
-    // Escapes the current calling context and pushes the blocking hardware reads to the MainLoop
-    main_loop.push<&LazySensor::refresh_and_maybe_publish>(this);
-  }
-
-  void refresh_and_maybe_publish() {
-    state_->refresh();
-    if (state_->needs_publish()) {
-      request_publish();  // Eventually calls get_payload() via the standard Entity pipeline
-    }
-  }
+  // Posts to `main_loop` a refresh() on the underlying SensorState. Publishes if it changes.
+  void publish_if_changed() { main_loop.push<&LazySensor::refresh_and_maybe_publish>(this); }
 
  private:
   AbstractSensorState* state_;
+
+  void refresh_and_maybe_publish();
 
   static Config patch_config(Config config) {
     config.get_value = trampoline<&AbstractSensorState::get_payload>();
@@ -123,7 +111,12 @@ class LazySensor : public Sensor {
   }
 };
 
-// The all-in-one wrapper that owns its state.
+// An all-in-one wrapper that owns its SensorState.
+// @example
+// static constinit Sensors::DhtSensorReader dht_reader(GPIO_NUM_16, Sensors::DHTType::DHT11);
+// static Entities::StatefulSensor<int16_t> temp_entity(my_device, "temp", "Temperature",
+//     { .device_class = "temperature", .unit_of_measurement = "°C" },
+//     dht_reader, []() -> int16_t { return dht_reader.get_temp(); }, Entities::format_tenths);
 template <typename T>
 class StatefulSensor : public LazySensor {
  public:

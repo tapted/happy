@@ -40,10 +40,6 @@ class Entity : public Core::IntrusiveNode<Entity> {
   void request_publish();
   void request_discovery();
 
-  // Default behavior just triggers a standard publish.
-  // Subclasses can override this to run async logic.
-  virtual void publish_if_changed() { request_publish(); }
-
   uint8_t get_pending_flags() const { return get_flags() & PENDING_MASK; }
   int get_state_qos() const { return (get_flags() & EPHEMERAL_STATE_QOS) ? 0 : 1; }
   int get_state_retain() const { return (get_flags() & RETAIN_STATE) ? 1 : 0; }
