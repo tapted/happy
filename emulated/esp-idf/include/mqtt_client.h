@@ -21,6 +21,8 @@ typedef enum {
   MQTT_EVENT_PUBLISHED,
   MQTT_EVENT_DATA,
   MQTT_EVENT_BEFORE_CONNECT,
+  MQTT_EVENT_DELETED,
+  MQTT_USER_EVENT,
 } esp_mqtt_event_id_t;
 
 typedef struct {

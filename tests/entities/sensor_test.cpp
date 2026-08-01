@@ -9,15 +9,17 @@ namespace HAPPY::Test {
 
 class SensorEntityTest : public HappyIntegrationTestHarness {};
 
+static std::string current_val;  // Global variable to simulate sensor value
+
 TEST_F(SensorEntityTest, DiscoveryAndInitialStatePublication) {
-  std::string current_val = "23.5";
+  current_val = "23.5";
   HAPPY::Entities::Sensor sensor(device_, "temperature", "Temperature",
                                  {
                                      .device_class = "temperature",
                                      .unit_of_measurement = "°C",
                                      .icon = "mdi:thermometer",
                                      .entity_category = "diagnostic",
-                                     .get_value = [&]() { return current_val; },
+                                     .get_value = [](auto*) { return current_val; },
                                  });
 
   // Connect and drive the MQTT state machine until all packets are sent and ACKed
@@ -77,12 +79,12 @@ TEST_F(SensorEntityTest, DiscoveryAndInitialStatePublication) {
 }
 
 TEST_F(SensorEntityTest, StateUpdateOnRequestPublish) {
-  std::string current_val = "10";
+  current_val = "10";
   HAPPY::Entities::Sensor sensor(device_, "uptime", "Uptime",
                                  {
                                      .device_class = "duration",
                                      .unit_of_measurement = "s",
-                                     .get_value = [&]() { return current_val; },
+                                     .get_value = [](auto*) { return current_val; },
                                  });
 
   connect_and_pump_until_idle();
