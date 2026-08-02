@@ -8,18 +8,16 @@
 #include <esp_ota_ops.h>
 #include <esp_system.h>
 #include <esp_timer.h>
-#include <string>
 #include <sys/statvfs.h>
 #include <sys/time.h>
 #include <time.h>
 
 #include "espbase/esp_result.hpp"
 
-static std::string get_temperature_celsius(void*) {
+static float get_temperature_celsius() {
   static auto sensor = []() -> EspResult<temperature_sensor_handle_t> {
     temperature_sensor_handle_t temp_handle;
     temperature_sensor_config_t temp_config = TEMPERATURE_SENSOR_CONFIG_DEFAULT(20, 50);
-    // temp_config.flags.allow_pd = 1;  // Allow power down mode for lower power consumption
     if (EspError err = temperature_sensor_install(&temp_config, &temp_handle)) {
       return err.log("TempSensor", "Failed to install temperature sensor");
     }
@@ -28,19 +26,20 @@ static std::string get_temperature_celsius(void*) {
     }
     return temp_handle;
   }();
+
   if (sensor) {
     float temp_c;
     if (temperature_sensor_get_celsius(*sensor, &temp_c) == ESP_OK) {
-      return std::to_string(temp_c);
+      return temp_c;
     }
   }
-  return "unknown";
+  return 0.0f;
 }
 
 static std::string get_reset_reason_str(void*) {
   switch (esp_reset_reason()) {
     case ESP_RST_UNKNOWN:
-      return "Unknown";
+      return "ESP_RST_UNKNOWN";
     case ESP_RST_POWERON:
       return "Power-on";
     case ESP_RST_EXT:
@@ -72,23 +71,20 @@ static std::string get_reset_reason_str(void*) {
     case ESP_RST_CPU_LOCKUP:
       return "CPU Lockup";
     default:
-      return "Unrecognized Code";
+      return "Undefined";
   }
 }
 
-static std::string get_firmware_size_once(void*) {
-  static std::string firmware_size = []() -> std::string {
-    const esp_partition_t* running = esp_ota_get_running_partition();
-    if (!running) return "unknown";
+static size_t get_firmware_size() {
+  const esp_partition_t* running = esp_ota_get_running_partition();
+  if (!running) return 0;
 
-    esp_image_metadata_t data;
-    const esp_partition_pos_t pos = {.offset = running->address, .size = running->size};
-    if (esp_image_get_metadata(&pos, &data) == ESP_OK) {
-      return std::to_string(data.image_len);
-    }
-    return "unknown";
-  }();
-  return firmware_size;
+  esp_image_metadata_t data;
+  const esp_partition_pos_t pos = {.offset = running->address, .size = running->size};
+  if (esp_image_get_metadata(&pos, &data) == ESP_OK) {
+    return data.image_len;
+  }
+  return 0;
 }
 
 static std::string get_boot_time_iso(void*) {
@@ -155,90 +151,69 @@ static constexpr Sensor::Config compile_date = {
         },
 };
 
-static constexpr Sensor::Config free_iram = {
-    .device_class = "data_size",
-    .unit_of_measurement = "B",
-    .icon = "mdi:memory",
-    .get_value = [](void*) { return std::to_string(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)); },
-};
-
-static constexpr Sensor::Config free_spiram = {
-    .device_class = "data_size",
-    .unit_of_measurement = "B",
-    .icon = "mdi:expansion-card",
-    .get_value = [](void*) { return std::to_string(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)); },
-};
-
-static constexpr Sensor::Config firmware_size = {
-    .device_class = "data_size",
-    .unit_of_measurement = "B",
-    .icon = "mdi:file-code-outline",
-    .get_value = get_firmware_size_once,
-};
-
-static constexpr Sensor::Config ota_partition_size = {
-    .device_class = "data_size",
-    .unit_of_measurement = "B",
-    .icon = "mdi:folder-table",
-    .get_value = [](void*) -> std::string {
-      const esp_partition_t* running = esp_ota_get_running_partition();
-      if (running) {
-        return std::to_string(running->size);
-      }
-      return "unknown";
-    },
-};
-
-static constexpr Sensor::Config fs_used_space = {
-    .device_class = "data_size",
-    .unit_of_measurement = "B",
-    .icon = "mdi:harddisk",
-    .get_value = [](void*) -> std::string {
-      struct statvfs stat;
-      if (statvfs("/fs", &stat) == 0) {
-        size_t used = (stat.f_blocks - stat.f_bfree) * stat.f_frsize;
-        return std::to_string(used);
-      }
-      return "unknown";
-    },
-};
-
 static constexpr Sensor::Config ip_address = {
     .icon = "mdi:ip-network",
     .get_value = get_ip_address,
-};
-
-static constexpr Sensor::Config temperature = {
-    .device_class = "temperature",
-    .unit_of_measurement = "°C",
-    .icon = "mdi:thermometer",
-    .get_value = get_temperature_celsius,
 };
 
 SystemDiagnostics::SystemDiagnostics(Device& device)
     : boot_time_(device, "boot_time", "Boot Time", boot_time),
       reboot_reason_(device, "reboot_reason", "Reboot Reason", reboot_reason),
       compile_date_(device, "compile_date", "Firmware Build", compile_date),
-      free_iram_(device, "free_iram", "Free Internal RAM", free_iram),
-      free_spiram_(device, "free_spiram", "Free External RAM", free_spiram),
-      firmware_size_(device, "firmware_size", "App Image Size", firmware_size),
-      ota_partition_size_(device, "ota_partition_size", "OTA Partition Size", ota_partition_size),
-      fs_used_space_(device, "fs_used_space", "Filesystem Used Space", fs_used_space),
+
+      free_iram_(device, "free_iram", "Free Internal RAM",
+                 {.device_class = "data_size", .unit_of_measurement = "B", .icon = "mdi:memory"},
+                 []() -> size_t { return heap_caps_get_free_size(MALLOC_CAP_INTERNAL); }),
+
+      free_spiram_(
+          device, "free_spiram", "Free External RAM",
+          {.device_class = "data_size", .unit_of_measurement = "B", .icon = "mdi:expansion-card"},
+          []() -> size_t { return heap_caps_get_free_size(MALLOC_CAP_SPIRAM); }),
+
+      firmware_size_(device, "firmware_size", "App Image Size",
+                     {.device_class = "data_size",
+                      .unit_of_measurement = "B",
+                      .icon = "mdi:file-code-outline"},
+                     get_firmware_size),
+
+      ota_partition_size_(
+          device, "ota_partition_size", "OTA Partition Size",
+          {.device_class = "data_size", .unit_of_measurement = "B", .icon = "mdi:folder-table"},
+          []() -> size_t {
+            const esp_partition_t* running = esp_ota_get_running_partition();
+            return running ? running->size : 0;
+          }),
+
+      fs_used_space_(
+          device, "fs_used_space", "Filesystem Used Space",
+          {.device_class = "data_size", .unit_of_measurement = "B", .icon = "mdi:harddisk"},
+          []() -> size_t {
+            struct statvfs stat;
+            if (statvfs("/fs", &stat) == 0) {
+              return (stat.f_blocks - stat.f_bfree) * stat.f_frsize;
+            }
+            return 0;
+          }),
+
       ip_address_(device, "ip_address", "IP Address", ip_address),
-      temperature_(device, "temperature", "Temperature (Celsius)", temperature) {
+
+      temperature_(
+          device, "temperature", "Temperature",
+          {.device_class = "temperature", .unit_of_measurement = "°C", .icon = "mdi:thermometer"},
+          get_temperature_celsius) {
 }
 
 void SystemDiagnostics::publish_all() {
-  boot_time_.request_publish();
-  reboot_reason_.request_publish();
-  compile_date_.request_publish();
-  free_iram_.request_publish();
-  free_spiram_.request_publish();
-  firmware_size_.request_publish();
-  ota_partition_size_.request_publish();
-  fs_used_space_.request_publish();
-  ip_address_.request_publish();
-  temperature_.request_publish();
+  main_loop.push<&Sensor::request_publish>(&boot_time_);
+  main_loop.push<&Sensor::request_publish>(&reboot_reason_);
+  main_loop.push<&Sensor::request_publish>(&compile_date_);
+  free_iram_.publish_if_changed();
+  free_spiram_.publish_if_changed();
+  firmware_size_.publish_if_changed();
+  ota_partition_size_.publish_if_changed();
+  fs_used_space_.publish_if_changed();
+  main_loop.push<&Sensor::request_publish>(&ip_address_);
+  temperature_.publish_if_changed();
 }
 
 }  // namespace HAPPY::Entities

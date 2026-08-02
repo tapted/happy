@@ -1,6 +1,6 @@
 #pragma once
 
-#include "happy/entities/sensor.hpp"
+#include "happy/entities/lazy_sensor.hpp"
 
 namespace HAPPY::Entities {
 
@@ -15,13 +15,16 @@ class SystemDiagnostics {
   Sensor boot_time_;
   Sensor reboot_reason_;
   Sensor compile_date_;
-  Sensor free_iram_;
-  Sensor free_spiram_;
-  Sensor firmware_size_;
-  Sensor ota_partition_size_;
-  Sensor fs_used_space_;
+
+  PollingSensor<size_t> free_iram_;
+  PollingSensor<size_t> free_spiram_;
+
+  CachingConstSensor<size_t> firmware_size_;
+  CachingConstSensor<size_t> ota_partition_size_;
+
+  PollingSensor<size_t> fs_used_space_;
   Sensor ip_address_;
-  Sensor temperature_;
+  PollingSensor<float> temperature_;
 };
 
 }  // namespace HAPPY::Entities
