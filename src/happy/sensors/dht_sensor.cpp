@@ -13,8 +13,8 @@ bool DhtSensorReader::refresh() {
 
   // The DHT sensors require ~2 seconds of hardware recovery time between reads and at boot time.
   // If we are polled early, or twice in quick succession, skip the hardware read entirely!
-  if (now - last_read_ms_ < 3000) {
-    return false;
+  if (now - last_read_ms_ < 2000) {
+    return last_read_ms_ != 0;  // Return true if we have a valid cached value.
   }
 
   EspResult<DHTReading> res = read();
