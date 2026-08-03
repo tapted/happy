@@ -22,7 +22,7 @@ std::string Button::get_discovery_payload() {
 
 void Button::handle_command(std::string_view payload) {
   if (payload == "PRESS" && config_.on_press) {
-    config_.on_press(*this);
+    config_.on_press(ctx_, *this);
   }
 }
 

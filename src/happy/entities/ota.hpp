@@ -14,7 +14,7 @@ class OtaController {
   std::string get_current_version() const { return current_version_; }
 
  private:
-  void ota_trigger();
+  void ota_trigger(const Button&);
   static void ota_step(EspTask<OtaController>& task);
 
   std::string current_version_;

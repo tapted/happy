@@ -129,8 +129,9 @@ OtaController::OtaController(Device& device, const char* base_version)
       update_btn_(device, "ota_trigger", "Check & Apply Update",
                   {
                       .icon = "mdi:cellphone-arrow-down",
-                      .on_press = [this](const auto&) { ota_trigger(); },
-                  }),
+                      .on_press = trampoline<&OtaController::ota_trigger>(),
+                  },
+                  this),
       current_version_sensor_(device, "current_version", "Running Firmware Version",
                               {
                                   .icon = "mdi:tag-check",
@@ -154,7 +155,7 @@ OtaController::OtaController(Device& device, const char* base_version)
   ESP_LOGI(TAG, "OTA Controller initialized. Current version: %s", current_version_.c_str());
 }
 
-void OtaController::ota_trigger() {
+void OtaController::ota_trigger(const Button&) {
   ESP_LOGI("HAPPY_OTA", "Saw ota_trigger. Starting OTA task...");
   ota_task_
       .start(

@@ -1,5 +1,7 @@
 #include "happy/entities/alarm.hpp"
 
+#include "espbase/trampoline.hpp"
+
 namespace HAPPY::Entities {
 
 AlarmController::IdBuf::IdBuf(const char* prefix, uint8_t alarm_id, const char* suffix, char sep) {
@@ -41,8 +43,9 @@ AlarmController::AlarmController(Device& device, uint8_t alarm_id,
       test_btn_(device, test_id_, test_name_,
                 {
                     .icon = "mdi:play-circle-outline",
-                    .on_press = [this](const auto&) { this->on_test_(*this); },
-                }) {
+                    .on_press = trampoline<&AlarmController::test>(),
+                },
+                this) {
 }
 
 }  // namespace HAPPY::Entities

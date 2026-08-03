@@ -43,7 +43,7 @@ class AlarmController {
 
   const uint8_t id;
 
-  using OnAlarmUpdateCallback = std::function<void(const AlarmController&)>;
+  using OnAlarmUpdateCallback = void (*)(const AlarmController&);
 
   AlarmController(Device& device, uint8_t alarm_id, std::span<const char* const> alarm_tones,
                   OnAlarmUpdateCallback on_update, OnAlarmUpdateCallback on_test);
@@ -62,6 +62,8 @@ class AlarmController {
   Time time_;
   Select tone_;
   Button test_btn_;
+
+  void test(const Button&) { on_test_(*this); }
 };
 
 }  // namespace HAPPY::Entities
