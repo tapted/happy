@@ -14,6 +14,11 @@
 
 #include "espbase/esp_result.hpp"
 
+extern size_t system_diagnostic_free_iram_at_boot;
+size_t system_diagnostic_free_iram_at_boot = 0;
+
+static constexpr time_t TIME_SYNCED_THRESHOLD = 1577836800;  // Jan 1, 2020 00:00:00 UTC
+
 static float get_temperature_celsius() {
   static auto sensor = []() -> EspResult<temperature_sensor_handle_t> {
     temperature_sensor_handle_t temp_handle;
@@ -92,7 +97,7 @@ static std::string get_boot_time_iso(void*) {
   time(&now);
 
   // If timestamp is before 2020, NTP hasn't synced yet
-  if (now < 1577836800) return "unknown";
+  if (now < TIME_SYNCED_THRESHOLD) return "unknown";
 
   // Boot Time = Current UNIX Epoch - ESP32 Uptime Seconds
   int64_t uptime_sec = esp_timer_get_time() / 1000000ULL;
@@ -156,11 +161,18 @@ static constexpr Sensor::Config ip_address = {
     .get_value = get_ip_address,
 };
 
+static constexpr Sensor::Config free_iram_at_boot = {
+    .device_class = "data_size",
+    .unit_of_measurement = "B",
+    .icon = "mdi:memory-arrow-down",
+    .get_value = [](void*) { return std::to_string(system_diagnostic_free_iram_at_boot); },
+};
+
 SystemDiagnostics::SystemDiagnostics(Device& device)
     : boot_time_(device, "boot_time", "Boot Time", boot_time),
       reboot_reason_(device, "reboot_reason", "Reboot Reason", reboot_reason),
       compile_date_(device, "compile_date", "Firmware Build", compile_date),
-
+      free_iram_at_boot_(device, "free_iram_at_boot", "Free IRAM at Boot", free_iram_at_boot),
       free_iram_(device, "free_iram", "Free Internal RAM",
                  {.device_class = "data_size", .unit_of_measurement = "B", .icon = "mdi:memory"},
                  []() -> size_t { return heap_caps_get_free_size(MALLOC_CAP_INTERNAL); }),
@@ -203,17 +215,22 @@ SystemDiagnostics::SystemDiagnostics(Device& device)
           get_temperature_celsius) {
 }
 
-void SystemDiagnostics::publish_all() {
-  main_loop.push<&Sensor::request_publish>(&boot_time_);
-  main_loop.push<&Sensor::request_publish>(&reboot_reason_);
-  main_loop.push<&Sensor::request_publish>(&compile_date_);
+void SystemDiagnostics::publish_all_mutable(bool is_time_sync) {
   free_iram_.publish_if_changed();
   free_spiram_.publish_if_changed();
-  firmware_size_.publish_if_changed();
-  ota_partition_size_.publish_if_changed();
   fs_used_space_.publish_if_changed();
-  main_loop.push<&Sensor::request_publish>(&ip_address_);
   temperature_.publish_if_changed();
+
+  static bool boot_time_published = false;
+  if (is_time_sync && !boot_time_published) {
+    // Special case: Boot Time is only published once, after NTP has synced.
+    time_t now;
+    time(&now);
+    if (now >= TIME_SYNCED_THRESHOLD) {
+      boot_time_.request_publish();
+      boot_time_published = true;
+    }
+  }
 }
 
 }  // namespace HAPPY::Entities
