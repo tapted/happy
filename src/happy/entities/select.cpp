@@ -48,6 +48,6 @@ void Select::on_change() {
     return;  // Expect a recursive call.
   }
 
-  if (config_.on_update) config_.on_update(*this);
+  if (config_.on_update) config_.on_update(on_update_ctx, *this);
 }
 }  // namespace HAPPY::Entities

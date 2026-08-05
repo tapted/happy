@@ -16,11 +16,14 @@ class Text : public PersistentEntity<Text, TextState> {
   struct Config {
     const char* icon = "mdi:form-textbox";
     const char* entity_category = "config";
-    std::function<void(const Text&)> on_update = nullptr;
+    void (*on_update)(const Text&) = nullptr;
   };
 
-  Text(Device& device, const char* object_id, const char* name, Config config)
-      : PersistentEntity(device, "text", object_id, name, true), config_(config) {}
+  Text(Device& device, const char* object_id, const char* name, Config config,
+       void* on_update_ctx = nullptr)
+      : PersistentEntity(device, "text", object_id, name, true),
+        config_(config),
+        on_update_ctx(on_update_ctx) {}
 
   void set_value(std::string_view new_value) {
     TextState new_state = state();
@@ -40,6 +43,7 @@ class Text : public PersistentEntity<Text, TextState> {
 
  private:
   Config config_;
+  void* on_update_ctx = nullptr;
 };
 
 }  // namespace HAPPY::Entities

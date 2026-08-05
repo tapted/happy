@@ -16,11 +16,15 @@ class Select : public PersistentEntity<Select, SelectState> {
     const char* icon = "mdi:format-list-bulleted";
     const char* entity_category = "config";
     std::span<const char* const> options;
-    std::function<void(const Select&)> on_update = nullptr;
+
+    void (*on_update)(void*, const Select&) = nullptr;
   };
 
-  Select(Device& device, const char* object_id, const char* name, Config config)
-      : PersistentEntity(device, "select", object_id, name, true), config_(std::move(config)) {}
+  Select(Device& device, const char* object_id, const char* name, Config config,
+         void* on_update_ctx = nullptr)
+      : PersistentEntity(device, "select", object_id, name, true),
+        config_(std::move(config)),
+        on_update_ctx(on_update_ctx) {}
 
   bool empty() const { return config_.options.empty(); }
   std::string_view get_selected() const {
@@ -34,6 +38,7 @@ class Select : public PersistentEntity<Select, SelectState> {
 
  private:
   Config config_;
+  void* on_update_ctx = nullptr;
 };
 
 }  // namespace HAPPY::Entities

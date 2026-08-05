@@ -52,6 +52,9 @@ class AlarmController {
   const Time& time() const { return time_; }
 
  private:
+  void on_tone_update(const Select&) { on_update_(*this); }
+  void on_time_update(const Time&) { on_update_(*this); }
+
   OnAlarmUpdateCallback on_update_;
   OnAlarmUpdateCallback on_test_;
 
