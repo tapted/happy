@@ -93,15 +93,18 @@ static size_t get_firmware_size() {
 }
 
 static std::string get_boot_time_iso(void*) {
-  time_t now;
-  time(&now);
+  static time_t boot_time = 0;
+  if (boot_time == 0) {
+    time_t now;
+    time(&now);
 
-  // If timestamp is before 2020, NTP hasn't synced yet
-  if (now < TIME_SYNCED_THRESHOLD) return "unknown";
+    // If timestamp is before 2020, NTP hasn't synced yet
+    if (now < TIME_SYNCED_THRESHOLD) return "unknown";
 
-  // Boot Time = Current UNIX Epoch - ESP32 Uptime Seconds
-  int64_t uptime_sec = esp_timer_get_time() / 1000000ULL;
-  time_t boot_time = now - uptime_sec;
+    // Boot Time = Current UNIX Epoch - ESP32 Uptime Seconds
+    int64_t uptime_sec = esp_timer_get_time() / 1000000ULL;
+    boot_time = now - uptime_sec;
+  }
 
   struct tm timeinfo;
   gmtime_r(&boot_time, &timeinfo);
