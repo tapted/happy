@@ -191,14 +191,6 @@ SystemDiagnostics::SystemDiagnostics(Device& device)
                       .icon = "mdi:file-code-outline"},
                      get_firmware_size),
 
-      ota_partition_size_(
-          device, "ota_partition_size", "OTA Partition Size",
-          {.device_class = "data_size", .unit_of_measurement = "B", .icon = "mdi:folder-table"},
-          []() -> size_t {
-            const esp_partition_t* running = esp_ota_get_running_partition();
-            return running ? running->size : 0;
-          }),
-
       fs_used_space_(
           device, "fs_used_space", "Filesystem Used Space",
           {.device_class = "data_size", .unit_of_measurement = "B", .icon = "mdi:harddisk"},

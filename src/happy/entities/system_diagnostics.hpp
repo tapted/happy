@@ -23,7 +23,6 @@ class SystemDiagnostics {
   PollingSensor<size_t> free_spiram_;
 
   CachingConstSensor<size_t> firmware_size_;
-  CachingConstSensor<size_t> ota_partition_size_;
 
   PollingSensor<size_t> fs_used_space_;
   Sensor ip_address_;
