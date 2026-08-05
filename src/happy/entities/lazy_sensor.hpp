@@ -46,6 +46,9 @@ class AbstractSensorState {
 
   // Returns the string payload and internally updates the last_published_value marker
   std::string get_payload_for_publish() {
+    // TODO: Should we call `refresh()` here? (and set has_published_after_refresh_ = true).
+    // Otherwise direct calls to request_publish() will be stuck on needs_successful_refresh_ = true
+    // until the next refresh() call but that may never come!
     has_published_after_refresh_ = has_published_after_refresh_ || !needs_successful_refresh_;
     return needs_successful_refresh_ ? "unknown" : get_payload_after_refresh();
   }
@@ -118,7 +121,9 @@ class CachingConstSensorState : public SensorState<T> {
  public:
   constexpr CachingConstSensorState(typename SensorState<T>::fetch_t fetch_cb,
                                     typename SensorState<T>::formatter_t formatter = nullptr)
-      : SensorState<T>(fetch_cb, formatter) {}
+      : SensorState<T>(fetch_cb, formatter) {
+    this->needs_successful_refresh_ = false;
+  }
 
   bool value_changed() override { return false; }
 
