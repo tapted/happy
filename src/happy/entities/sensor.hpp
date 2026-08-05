@@ -17,18 +17,23 @@ class Sensor : public Entity {
 
     // The lambda that fetches the real-time value
     std::string (*get_value)(void*) = nullptr;
+    void (*on_state_publish)(Sensor&, const std::string&) = nullptr;
   };
 
   Sensor(Device& device, const char* object_id, const char* name, Config config,
          void* user_ctx = nullptr)
       : Entity(device, "sensor", object_id, name), config_(std::move(config)), user_ctx(user_ctx) {}
 
+  const Config& config() const { return config_; }
   std::string get_discovery_payload() override;
 
   // Evaluates the lambda to get the current ESP32 state
   std::string get_state_payload() override {
-    if (config_.get_value) return config_.get_value(user_ctx);
-    return "unknown";
+    std::string value = config_.get_value(user_ctx);
+    if (config_.on_state_publish) {
+      config_.on_state_publish(*this, value);
+    }
+    return value;
   }
 
  private:
