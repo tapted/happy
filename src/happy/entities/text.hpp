@@ -1,6 +1,5 @@
 #pragma once
 
-#include <functional>
 #include <string_view>
 
 #include "happy/entity.hpp"

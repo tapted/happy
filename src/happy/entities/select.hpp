@@ -1,5 +1,5 @@
 #pragma once
-#include <functional>
+
 #include <span>
 
 #include "happy/entity.hpp"
