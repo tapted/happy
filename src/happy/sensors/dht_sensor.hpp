@@ -45,8 +45,9 @@ struct DHTReading {
   int16_t humidity_tenths;
 };
 
-class DhtSensorReader: public HAPPY::Entities::SensorReader {
+class DhtSensorReader : public HAPPY::Entities::SensorReader {
  public:
+  esp_err_t last_error = ESP_OK;
   constexpr DhtSensorReader(gpio_num_t pin = GPIO_NUM_4, DHTType type = DHTType::DHT11)
       : pin_(pin), type_(type) {}
 

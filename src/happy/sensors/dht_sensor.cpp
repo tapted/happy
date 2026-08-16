@@ -26,7 +26,7 @@ bool DhtSensorReader::refresh() {
   }
 
   // DHT driver handles checksum failures and physical timeouts internally
-  res.strip().log_error("DhtSensorReader", "Failed to read DHT sensor");
+  last_error = res.strip().log_error("DhtSensorReader", "Failed to read DHT sensor").error();
   return false;
 }
 
