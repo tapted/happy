@@ -35,12 +35,15 @@ void Entity::request_discovery() {
 }
 
 void Entity::get_discovery_topic(topic_buf_t& buf) const {
-  snprintf(buf, sizeof(buf), "homeassistant/%s/%s/config", domain_,
-           device_.get_topic_prefix(buf, object_id_));
+  topic_buf_t topic_prefix_buf;
+  const char* topic_prefix = device_.get_topic_prefix(topic_prefix_buf, object_id_);
+  snprintf(buf, sizeof(buf), "homeassistant/%s/%s/config", domain_, topic_prefix);
 }
 
 void Entity::get_state_topic(topic_buf_t& buf) const {
-  snprintf(buf, sizeof(buf), "%s/state", device_.get_topic_prefix(buf, object_id_));
+  topic_buf_t topic_prefix_buf;
+  const char* topic_prefix = device_.get_topic_prefix(topic_prefix_buf, object_id_);
+  snprintf(buf, sizeof(buf), "%s/state", topic_prefix);
 }
 
 void Entity::get_command_topic(topic_buf_t& buf) const {
@@ -48,7 +51,9 @@ void Entity::get_command_topic(topic_buf_t& buf) const {
     buf[0] = '\0';
     return;
   }
-  snprintf(buf, sizeof(buf), "%s/set", device_.get_topic_prefix(buf, object_id_));
+  topic_buf_t topic_prefix_buf;
+  const char* topic_prefix = device_.get_topic_prefix(topic_prefix_buf, object_id_);
+  snprintf(buf, sizeof(buf), "%s/set", topic_prefix);
 }
 
 bool Entity::load_nvs_blob(void* dest, size_t size) const {

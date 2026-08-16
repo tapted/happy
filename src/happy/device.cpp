@@ -1,6 +1,18 @@
 #include "happy/device.hpp"
 
+#if __has_include(<esp_app_desc.h>)
 #include <esp_app_desc.h>
+#else
+struct esp_app_desc_t {
+  const char* version;
+};
+esp_app_desc_t* esp_app_get_description() {
+  static esp_app_desc_t desc = {
+      .version = "unknown",
+  };
+  return &desc;
+}
+#endif
 #include <esp_log.h>
 
 #include "espbase/json.hpp"
@@ -46,7 +58,7 @@ void Device::inject_into(JsonObjectBuilder& builder) const {
   }
 
   builder.with_object("device", [this, identifier, name](auto& dev) {
-    dev.with_array("identifiers", [this, identifier](auto& arr) { arr.push(identifier); });
+    dev.with_array("identifiers", [identifier](auto& arr) { arr.push(identifier); });
     dev.set("name", name);
 
     if (config_.manufacturer) dev.set("manufacturer", config_.manufacturer);

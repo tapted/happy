@@ -1,6 +1,7 @@
 #pragma once
 
 #include <gtest/gtest.h>
+#include <iostream>
 
 #include "happy/transports/mqtt_device.hpp"
 #include "mocks/mock_mqtt.hpp"
@@ -52,6 +53,7 @@ class HappyIntegrationTestHarness : public ::testing::Test {
 
   const EnqueueCall* find_enqueue_call(const std::string& topic) const {
     for (const auto& call : enqueue_calls()) {
+      std::cerr << "Checking call for topic: " << call.topic << std::endl;
       if (call.topic == topic) return &call;
     }
     return nullptr;
