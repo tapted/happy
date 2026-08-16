@@ -52,7 +52,7 @@ void Device::inject_into(JsonObjectBuilder& builder) const {
     const char* mac_ptr = get_mac_chars(buf);
 
     std::snprintf(identifier_buf, sizeof(identifier_buf), "%s_%s", config_.identifiers, mac_ptr);
-    std::snprintf(name_buf, sizeof(name_buf), "%s %s", config_.name, mac_ptr);
+    std::snprintf(name_buf, sizeof(name_buf), "%s %s", mac_ptr, config_.name);
     identifier = identifier_buf;
     name = name_buf;
   }
