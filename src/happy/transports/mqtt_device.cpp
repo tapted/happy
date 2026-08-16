@@ -74,7 +74,9 @@ void MqttDevice::pump_queue() {
   }
 
   if (was_disconnected) {
-    ESP_LOGI(TAG, "Connected to broker. Pumping %zu entities.", entities_.count_items());
+    char buf[128];
+    get_unique_id(buf, "");
+    ESP_LOGI(TAG, "Connected to broker as %s. Pumping %zu entities.", buf, entities_.count_items());
     was_disconnected = false;
     have_logged_since_reconnected = false;
     pump_count = 0;

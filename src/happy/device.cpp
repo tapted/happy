@@ -1,21 +1,60 @@
 #include "happy/device.hpp"
 
+#include <esp_app_desc.h>
 #include <esp_log.h>
 
 #include "espbase/json.hpp"
+#include "espbase/mac_address.hpp"
 #include "happy/entity.hpp"
 
 namespace HAPPY {
 
+const char* Device::get_mac_chars(char (&buf)[16]) const {
+  const MacAddress& m = MacAddress::mine();
+  std::snprintf(buf, sizeof(buf), "%02X%02X%02X%02X%02X%02X", m[0], m[1], m[2], m[3], m[4], m[5]);
+  return buf + (12 - config_.append_mac_chars);
+}
+
+const char* Device::get_unique_id(char (&buf)[128], const char* object_id, char object_sep) const {
+  if (config_.append_mac_chars == 0) {
+    std::snprintf(buf, sizeof(buf), "%s%c%s", config_.identifiers, object_sep, object_id);
+    return buf;
+  }
+
+  char mac_buf[16];
+  const char* mac_ptr = get_mac_chars(mac_buf);
+  std::snprintf(buf, sizeof(buf), "%s_%s%c%s", config_.identifiers, mac_ptr, object_sep, object_id);
+  return buf;
+}
+
 // Injects the HA "device" grouping block into an existing json.h builder
 void Device::inject_into(JsonObjectBuilder& builder) const {
-  builder.with_object("device", [this](auto& dev) {
-    dev.with_array("identifiers", [this](auto& arr) { arr.push(config_.identifiers); });
-    dev.set("name", config_.name);
+  char identifier_buf[64];
+  char name_buf[64];
+
+  const char* identifier = config_.identifiers;
+  const char* name = config_.name;
+
+  if (config_.append_mac_chars > 0) {
+    char buf[16];
+    const char* mac_ptr = get_mac_chars(buf);
+
+    std::snprintf(identifier_buf, sizeof(identifier_buf), "%s_%s", config_.identifiers, mac_ptr);
+    std::snprintf(name_buf, sizeof(name_buf), "%s %s", config_.name, mac_ptr);
+    identifier = identifier_buf;
+    name = name_buf;
+  }
+
+  builder.with_object("device", [this, identifier, name](auto& dev) {
+    dev.with_array("identifiers", [this, identifier](auto& arr) { arr.push(identifier); });
+    dev.set("name", name);
 
     if (config_.manufacturer) dev.set("manufacturer", config_.manufacturer);
     if (config_.model) dev.set("model", config_.model);
-    if (config_.sw_version) dev.set("sw_version", config_.sw_version);
+
+    const char* sw_version =
+        config_.sw_version ? config_.sw_version : esp_app_get_description()->version;
+    dev.set("sw_version", sw_version);
   });
 }
 

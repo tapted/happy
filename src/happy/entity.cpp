@@ -35,12 +35,12 @@ void Entity::request_discovery() {
 }
 
 void Entity::get_discovery_topic(topic_buf_t& buf) const {
-  snprintf(buf, sizeof(buf), "homeassistant/%s/%s/%s/config", domain_, device_.get_identifier(),
-           object_id_);
+  snprintf(buf, sizeof(buf), "homeassistant/%s/%s/config", domain_,
+           device_.get_topic_prefix(buf, object_id_));
 }
 
 void Entity::get_state_topic(topic_buf_t& buf) const {
-  snprintf(buf, sizeof(buf), "%s/%s/state", device_.get_identifier(), object_id_);
+  snprintf(buf, sizeof(buf), "%s/state", device_.get_topic_prefix(buf, object_id_));
 }
 
 void Entity::get_command_topic(topic_buf_t& buf) const {
@@ -48,7 +48,7 @@ void Entity::get_command_topic(topic_buf_t& buf) const {
     buf[0] = '\0';
     return;
   }
-  snprintf(buf, sizeof(buf), "%s/%s/set", device_.get_identifier(), object_id_);
+  snprintf(buf, sizeof(buf), "%s/set", device_.get_topic_prefix(buf, object_id_));
 }
 
 bool Entity::load_nvs_blob(void* dest, size_t size) const {
@@ -79,8 +79,7 @@ void Entity::save_nvs_blob(const void* src, size_t size) const {
 
 void Entity::inject_base_config(JsonObjectBuilder& builder) const {
   char buf[128];
-  snprintf(buf, sizeof(buf), "%s_%s", device_.get_identifier(), object_id_);
-  const char* unique_id = buf;
+  const char* unique_id = device_.get_unique_id(buf, object_id_);
 
   builder.set("name", name_);
   builder.set("unique_id", unique_id);

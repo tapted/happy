@@ -29,13 +29,22 @@ class Device {
     const char* manufacturer = "Custom";
     const char* model = "ESP32 Device";
     const char* sw_version = nullptr;
+
+    // Append the last N characters of the MAC address to the identifier and name when publishing.
+    uint8_t append_mac_chars = 0;
   };
 
   explicit constexpr Device(const Config& config) : config_(config) {}
   virtual ~Device() = default;
 
-  const char* get_identifier() const { return config_.identifiers; }
-  const char* get_name() const { return config_.name; }
+  const char* get_mac_chars(char (&buf)[16]) const;
+  const char* get_unique_id(char (&buf)[128], const char* object_id, char object_sep = '_') const;
+  const char* get_topic_prefix(char (&buf)[128], const char* object_id) const {
+    return get_unique_id(buf, object_id, '/');
+  }
+
+  const char* get_identifier_prefix() const { return config_.identifiers; }
+  const char* get_name_suffix() const { return config_.name; }
 
   // Injects the HA "device" grouping block into an existing json.h builder
   void inject_into(JsonObjectBuilder& builder) const;
