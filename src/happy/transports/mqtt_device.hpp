@@ -1,12 +1,15 @@
 #pragma once
 
 #include <atomic>
-#include <mqtt_client.h>
 
 #include "espbase/esp_result.hpp"
 #include "happy/device.hpp"
 
 typedef const char* esp_event_base_t;
+typedef struct esp_mqtt_client_config_t esp_mqtt_client_config_t;
+typedef struct esp_mqtt_client* esp_mqtt_client_handle_t;
+typedef struct esp_mqtt_event_t esp_mqtt_event_t;
+typedef esp_mqtt_event_t* esp_mqtt_event_handle_t;
 
 namespace HAPPY::Transports {
 
