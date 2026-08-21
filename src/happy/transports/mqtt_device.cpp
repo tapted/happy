@@ -107,7 +107,7 @@ void MqttDevice::pump_queue() {
 
   ++pump_count;
 
-  constexpr int MAX_IN_FLIGHT = 1;
+  constexpr int MAX_IN_FLIGHT = 5;
   int msg_id = 0;
   topic_buf_t topic;
   topic[0] = '\0';
