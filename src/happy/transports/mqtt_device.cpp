@@ -40,6 +40,9 @@ EspResult<void> MqttDevice::begin(const esp_mqtt_client_config_t& mqtt_cfg) {
 }
 
 void MqttDevice::poke() {
+  if (pump_scheduled_.exchange(true, std::memory_order_acquire)) {
+    return;
+  }
   main_loop.push<&MqttDevice::pump_queue>(this);
 }
 
@@ -81,6 +84,11 @@ void MqttDevice::pump_queue() {
   static bool was_disconnected = true;
   static bool have_logged_since_reconnected = false;
   static constinit sjson::StackBuffer<1024> buffer;
+
+  // Allow another pump to be scheduled. If a pump _is_ scheduled it might end up doing nothing, but
+  // we need to allow the scheduling to happen so that we don't deadlock if the pending acks are
+  // full and the pump is waiting for an ACK to come back.
+  pump_scheduled_.store(false, std::memory_order_release);
 
   // If we are offline, abort entirely. The flags stay safely set on the entities.
   if (!is_connected_.load(std::memory_order_acquire)) {

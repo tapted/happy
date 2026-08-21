@@ -40,6 +40,7 @@ class MqttDevice : public Device {
  private:
   esp_mqtt_client_handle_t client_ = nullptr;
   std::atomic<bool> is_connected_{false};
+  std::atomic<bool> pump_scheduled_{false};          // Prevents multiple concurrent pumps
   std::atomic<bool> initial_setup_complete_{false};  // Protects the boot phase
   std::atomic<int> pending_acks_{0};                 // Only tracks active in-flight QoS > 0 packets
 
