@@ -11,7 +11,7 @@
 namespace sjson {
 class Buffer;
 class Builder;
-}
+}  // namespace sjson
 
 namespace HAPPY {
 class Device;
@@ -54,7 +54,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
   virtual ~Entity() = default;
 
   void get_discovery_topic(topic_buf_t& buf) const;
-  void get_state_topic(topic_buf_t& buf) const;
+  const char* get_state_topic(topic_buf_t& buf) const;
   void get_command_topic(topic_buf_t& buf) const;
 
   virtual void load() {}

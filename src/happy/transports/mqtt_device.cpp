@@ -3,6 +3,7 @@
 #include <esp_log.h>
 #include <mqtt_client.h>
 
+#include "espbase/main_loop.hpp"
 #include "espbase/stack_json/buffer.hpp"
 #include "happy/entity.hpp"
 
@@ -38,6 +39,10 @@ EspResult<void> MqttDevice::begin(const esp_mqtt_client_config_t& mqtt_cfg) {
   return ESP_OK;
 }
 
+void MqttDevice::poke() {
+  main_loop.push<&MqttDevice::pump_queue>(this);
+}
+
 bool MqttDevice::is_idle() const {
   // 1. Not idle if we are still booting and haven't queued our first discovery
   if (!initial_setup_complete_.load(std::memory_order_acquire)) return false;
@@ -65,9 +70,17 @@ void MqttDevice::static_event_handler(void* handler_args, esp_event_base_t /*bas
 }
 
 void MqttDevice::pump_queue() {
+  // For these statics to work without race conditions, we must always run on the same core.
+  static BaseType_t core_id = xPortGetCoreID();
+  if (xPortGetCoreID() != core_id) {
+    ESP_LOGE(TAG, "pump_queue() switched to core: %d (expected %d)", xPortGetCoreID(), core_id);
+    core_id = xPortGetCoreID();
+  }
+
   static uint16_t pump_count = 0;
   static bool was_disconnected = true;
   static bool have_logged_since_reconnected = false;
+  static constinit sjson::StackBuffer<1024> buffer;
 
   // If we are offline, abort entirely. The flags stay safely set on the entities.
   if (!is_connected_.load(std::memory_order_acquire)) {
@@ -91,15 +104,16 @@ void MqttDevice::pump_queue() {
   topic_buf_t topic;
   topic[0] = '\0';
 
-  static constinit sjson::StackBuffer<1024> buffer;
-
   for (Entity& entity : entities_) {
-    buffer.reset();
+    const uint8_t pending_flags = entity.get_pending_flags();
+    if (pending_flags == 0) continue;
 
-    // Only block if the ACK window is full
+    // Block if the ACK window is full - we'll need to be poked!
     if (pending_acks_.load(std::memory_order_acquire) >= MAX_IN_FLIGHT) break;
 
-    if (entity.get_pending_flags() & Entity::FLAG_DISCOVERY) {
+    buffer.reset();
+
+    if (pending_flags & Entity::FLAG_DISCOVERY) {
       entity.get_discovery_topic(topic);
       entity.get_discovery_payload(buffer);
       msg_id = mqtt_enqueue(topic, buffer.c_str(), 1, 1);
@@ -108,7 +122,7 @@ void MqttDevice::pump_queue() {
         pending_acks_.fetch_add(1, std::memory_order_relaxed);
       }
 
-    } else if (entity.get_pending_flags() & Entity::FLAG_SUBSCRIBE) {
+    } else if (pending_flags & Entity::FLAG_SUBSCRIBE) {
       entity.get_command_topic(topic);
       msg_id = esp_mqtt_client_subscribe_single(client_, topic, 1);
       if (msg_id >= 0) {
@@ -121,7 +135,7 @@ void MqttDevice::pump_queue() {
         ESP_LOGW(TAG, "Failed to subscribe to topic: %s", topic);
       }
 
-    } else if (entity.get_pending_flags() & Entity::FLAG_STATE) {
+    } else if (pending_flags & Entity::FLAG_STATE) {
       entity.get_state_topic(topic);
       int qos = entity.get_state_qos();
       int retain = entity.get_state_retain();
@@ -202,7 +216,7 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
     case MQTT_EVENT_PUBLISHED:
     case MQTT_EVENT_DELETED:
       pending_acks_.fetch_sub(1, std::memory_order_release);
-      pump_queue();
+      poke();
       break;
 
     default:
@@ -223,7 +237,7 @@ void MqttDevice::on_connected() {
   initial_setup_complete_.store(true, std::memory_order_release);
 
   // 3. Kick off the first packet
-  pump_queue();
+  poke();
 }
 
 int MqttDevice::mqtt_publish(const char* topic, const char* payload, int qos, int retain) {

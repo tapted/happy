@@ -31,7 +31,7 @@ class MqttDevice : public Device {
   // ```
   EspResult<void> begin(const esp_mqtt_client_config_t& mqtt_cfg);
 
-  void poke() override { pump_queue(); }
+  void poke() override;
 
   esp_mqtt_client_handle_t get_client() const { return client_; }
 

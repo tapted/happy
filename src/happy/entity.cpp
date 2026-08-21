@@ -41,10 +41,11 @@ void Entity::get_discovery_topic(topic_buf_t& buf) const {
   snprintf(buf, sizeof(buf), "homeassistant/%s/%s/config", domain_, topic_prefix);
 }
 
-void Entity::get_state_topic(topic_buf_t& buf) const {
+const char* Entity::get_state_topic(topic_buf_t& buf) const {
   topic_buf_t topic_prefix_buf;
   const char* topic_prefix = device_.get_topic_prefix(topic_prefix_buf, object_id_);
   snprintf(buf, sizeof(buf), "%s/state", topic_prefix);
+  return buf;
 }
 
 void Entity::get_command_topic(topic_buf_t& buf) const {
