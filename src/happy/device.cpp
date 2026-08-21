@@ -17,6 +17,7 @@ esp_app_desc_t* esp_app_get_description() {
 
 #include "espbase/json.hpp"
 #include "espbase/mac_address.hpp"
+#include "espbase/stack_json/json.hpp"
 #include "happy/entity.hpp"
 
 namespace HAPPY {
@@ -68,6 +69,34 @@ void Device::inject_into(JsonObjectBuilder& builder) const {
         config_.sw_version ? config_.sw_version : esp_app_get_description()->version;
     dev.set("sw_version", sw_version);
   });
+}
+
+bool Device::emit_with(sjson::Buffer& buffer, sjson::Builder& builder) const {
+  char identifier_buf[64];
+  char name_buf[64];
+
+  const char* identifier = config_.identifiers;
+  const char* name = config_.name;
+
+  if (config_.append_mac_chars > 0) {
+    char buf[16];
+    const char* mac_ptr = get_mac_chars(buf);
+
+    std::snprintf(identifier_buf, sizeof(identifier_buf), "%s_%s", config_.identifiers, mac_ptr);
+    std::snprintf(name_buf, sizeof(name_buf), "%s %s", mac_ptr, config_.name);
+    identifier = identifier_buf;
+    name = name_buf;
+  }
+
+  const char* sw_ver = config_.sw_version ? config_.sw_version : esp_app_get_description()->version;
+  auto device = path("device");
+  auto doc = stack_json(node(device("identifiers"), stack_array(identifier)),   //
+                        node(device("name"), name),                             //
+                        node_if(device("manufacturer"), config_.manufacturer),  //
+                        node_if(device("model"), config_.model),                //
+                        node(device("sw_version"), sw_ver));
+  builder.add(doc);
+  return builder.emit(buffer);
 }
 
 void Device::register_entity(HAPPY::Entity* entity) {

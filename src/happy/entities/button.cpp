@@ -1,23 +1,21 @@
 #include "happy/entities/button.hpp"
 
-#include "espbase/json.hpp"
+#include "espbase/stack_json/json.hpp"
 
 namespace HAPPY::Entities {
-  
-std::string Button::get_discovery_payload() {
-  JsonDocument doc;
-  JsonObjectBuilder builder(doc.get());
-  this->inject_base_config(builder);
 
+bool Button::get_discovery_payload(sjson::Buffer& buffer) {
+  sjson::StackBuilder<32> builder;  // Max 32 entries.
   topic_buf_t command_topic;
-  this->get_command_topic(command_topic);
-  builder.set("command_topic", (const char*)command_topic);
+  get_command_topic(command_topic);
 
-  if (config_.icon) builder.set("icon", config_.icon);
-  if (config_.device_class) builder.set("device_class", config_.device_class);
-  if (config_.entity_category) builder.set("entity_category", config_.entity_category);
+  auto doc = stack_json(node(path("command_topic"), command_topic),  //
+                        node_if(path("icon"), config_.icon),         //
+                        node_if(path("device_class"), config_.device_class),
+                        node_if(path("entity_category"), config_.entity_category));
 
-  return doc.to_string();
+  builder.add(doc);
+  return this->emit_with_base_config(buffer, builder);
 }
 
 void Button::handle_command(std::string_view payload) {

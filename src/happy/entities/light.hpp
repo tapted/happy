@@ -59,7 +59,7 @@ class Light : public PersistentEntity<Light, LightState> {
         static_cast<uint32_t>((state().b * state().brightness) / 255),
     };
   }
-  std::string get_discovery_payload() override;
+  bool get_discovery_payload(sjson::Buffer& buffer) override;
   std::string get_state_payload() override;
   void handle_command(const std::string_view payload) override;
   void on_change() override {

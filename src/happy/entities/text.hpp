@@ -31,8 +31,8 @@ class Text : public PersistentEntity<Text, TextState> {
     set_state(new_state);
   }
   std::string_view get_value() const { return state().value; }
-
-  std::string get_discovery_payload() override;
+  
+  bool get_discovery_payload(sjson::Buffer& buffer) override;
   std::string get_state_payload() override;
   void handle_command(std::string_view payload) override;
 

@@ -26,8 +26,8 @@ class Time : public PersistentEntity<Time, TimeState> {
   uint8_t hour() const { return state().hour_; }
   uint8_t minute() const { return state().minute_; }
   uint8_t second() const { return state().second_; }
-
-  std::string get_discovery_payload() override;
+  
+  bool get_discovery_payload(sjson::Buffer& buffer) override;
   std::string get_state_payload() override;
   void handle_command(std::string_view payload) override;
   void on_change() override {

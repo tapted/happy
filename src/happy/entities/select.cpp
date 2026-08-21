@@ -1,30 +1,25 @@
 
 #include "happy/entities/select.hpp"
 
-#include "espbase/json.hpp"
 #include <esp_log.h>
+
+#include "espbase/stack_json/json.hpp"
+
 
 namespace HAPPY::Entities {
 
-std::string Select::get_discovery_payload() {
-  JsonDocument doc;
-  JsonObjectBuilder builder(doc.get());
-  this->inject_base_config(builder);
-
+bool Select::get_discovery_payload(sjson::Buffer& buffer) {
+  sjson::StackBuilder<32> builder;  // Max 32 entries.
   topic_buf_t command_topic;
   get_command_topic(command_topic);
-  builder.set("command_topic", (const char*)command_topic);
 
-  if (config_.icon) builder.set("icon", config_.icon);
-  if (config_.entity_category) builder.set("entity_category", config_.entity_category);
+  auto doc = stack_json(node(path("command_topic"), command_topic),  //
+                        node_if(path("icon"), config_.icon),         //
+                        node_if(path("entity_category"), config_.entity_category),
+                        node(path("options"), span_array(config_.options)));
 
-  builder.with_array("options", [this](auto& arr) {
-    for (const char* opt : config_.options) {
-      arr.push(opt);
-    }
-  });
-
-  return doc.to_string();
+  builder.add(doc);
+  return this->emit_with_base_config(buffer, builder);
 }
 
 std::string Select::get_state_payload() {
@@ -45,7 +40,7 @@ void Select::on_change() {
   const size_t new_index = state().selected_option_index_;
   if (new_index != 0 && new_index >= config_.options.size()) {
     set_state({.selected_option_index_ = 0});  // Reset to a valid index if out of bounds
-    return;  // Expect a recursive call.
+    return;                                    // Expect a recursive call.
   }
 
   if (config_.on_update) config_.on_update(on_update_ctx, *this);

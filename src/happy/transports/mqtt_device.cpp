@@ -3,6 +3,7 @@
 #include <esp_log.h>
 #include <mqtt_client.h>
 
+#include "espbase/stack_json/buffer.hpp"
 #include "happy/entity.hpp"
 
 namespace HAPPY::Transports {
@@ -90,13 +91,18 @@ void MqttDevice::pump_queue() {
   topic_buf_t topic;
   topic[0] = '\0';
 
+  static constinit sjson::StackBuffer<1024> buffer;
+
   for (Entity& entity : entities_) {
+    buffer.reset();
+
     // Only block if the ACK window is full
     if (pending_acks_.load(std::memory_order_acquire) >= MAX_IN_FLIGHT) break;
 
     if (entity.get_pending_flags() & Entity::FLAG_DISCOVERY) {
       entity.get_discovery_topic(topic);
-      msg_id = mqtt_enqueue(topic, entity.get_discovery_payload().c_str(), 1, 1);
+      entity.get_discovery_payload(buffer);
+      msg_id = mqtt_enqueue(topic, buffer.c_str(), 1, 1);
       if (msg_id >= 0) {
         entity.clear_flag(Entity::FLAG_DISCOVERY);
         pending_acks_.fetch_add(1, std::memory_order_relaxed);

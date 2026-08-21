@@ -3,33 +3,24 @@
 #include <esp_log.h>
 
 #include "espbase/json.hpp"
+#include "espbase/stack_json/json.hpp"
 
 namespace HAPPY::Entities {
 
-std::string Light::get_discovery_payload() {
-  JsonDocument doc;
-  JsonObjectBuilder builder(doc.get());
-
-  this->inject_base_config(builder);
-
-  builder.set("schema", "json");
-
+bool Light::get_discovery_payload(sjson::Buffer& buffer) {
+  sjson::StackBuilder<32> builder;  // Max 32 entries.
   topic_buf_t command_topic;
   get_command_topic(command_topic);
-  builder.set("command_topic", (const char*)command_topic);
 
-  builder.set("optimistic", false);
+  auto doc = stack_json(node(path("schema"), "json"),                //
+                        node(path("command_topic"), command_topic),  //
+                        node(path("optimistic"), false),             //
+                        node_if(path("icon"), config_.icon),         //
+                        node(path("supported_color_modes"),
+                             stack_array(config_.supports_rgb ? "rgb" : "brightness")));
 
-  if (config_.icon) builder.set("icon", config_.icon);
-
-  builder.with_array("supported_color_modes", [this](auto& arr) {
-    if (config_.supports_rgb)
-      arr.push("rgb");
-    else
-      arr.push("brightness");
-  });
-
-  return doc.to_string();
+  builder.add(doc);
+  return this->emit_with_base_config(buffer, builder);
 }
 
 std::string Light::get_state_payload() {

@@ -2,22 +2,20 @@
 
 #include <charconv>
 
-#include "espbase/json.hpp"
+#include "espbase/stack_json/json.hpp"
 
 namespace HAPPY::Entities {
 
-std::string Time::get_discovery_payload() {
-  JsonDocument doc;
-  JsonObjectBuilder builder(doc.get());
-  this->inject_base_config(builder);
-
+bool Time::get_discovery_payload(sjson::Buffer& buffer) {
+  sjson::StackBuilder<32> builder;  // Max 32 entries.
   topic_buf_t command_topic;
   get_command_topic(command_topic);
-  builder.set("command_topic", (const char*)command_topic);
 
-  if (config_.icon) builder.set("icon", config_.icon);
+  auto doc = stack_json(node(path("command_topic"), command_topic),  //
+                        node_if(path("icon"), config_.icon));
 
-  return doc.to_string();
+  builder.add(doc);
+  return this->emit_with_base_config(buffer, builder);
 }
 
 std::string Time::get_state_payload() {

@@ -8,6 +8,11 @@
 #include "espbase/json_fwd.h"
 #include "happy/core/intrusive_list.hpp"
 
+namespace sjson {
+class Buffer;
+class Builder;
+}
+
 namespace HAPPY {
 class Device;
 
@@ -53,7 +58,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
   void get_command_topic(topic_buf_t& buf) const;
 
   virtual void load() {}
-  virtual std::string get_discovery_payload() = 0;
+  virtual bool get_discovery_payload(sjson::Buffer& buffer) = 0;
   virtual std::string get_state_payload() { return std::string(); }
 
   // Default empty implementation. Sensors ignore this; Lights override it.
@@ -69,6 +74,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
 
   // Bootstraps the standard JSON fields required by all HA entities
   void inject_base_config(JsonObjectBuilder& builder) const;
+  bool emit_with_base_config(sjson::Buffer& buffer, sjson::Builder& builder) const;
 };
 
 // PersistentEntity is a template class that extends Entity to provide automatic state persistence

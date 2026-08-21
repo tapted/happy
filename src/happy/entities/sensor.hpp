@@ -25,7 +25,7 @@ class Sensor : public Entity {
       : Entity(device, "sensor", object_id, name), config_(std::move(config)), user_ctx(user_ctx) {}
 
   const Config& config() const { return config_; }
-  std::string get_discovery_payload() override;
+  bool get_discovery_payload(sjson::Buffer& buffer) override;
 
   // Evaluates the lambda to get the current ESP32 state
   std::string get_state_payload() override {

@@ -46,6 +46,8 @@ add_executable(happy_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/../src/happy/entities/sensor.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../espbase/emulated/espbase/nvs_store.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../espbase/src/espbase/mac_address.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../espbase/src/espbase/stack_json/document.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../espbase/src/espbase/stack_json/buffer.cpp
 )
 
 target_include_directories(happy_tests PRIVATE

@@ -30,8 +30,8 @@ class Select : public PersistentEntity<Select, SelectState> {
   std::string_view get_selected() const {
     return empty() ? "" : config_.options[state().selected_option_index_];
   }
-
-  std::string get_discovery_payload() override;
+  
+  bool get_discovery_payload(sjson::Buffer& buffer) override;
   std::string get_state_payload() override;
   void handle_command(std::string_view payload) override;
   void on_change() override;

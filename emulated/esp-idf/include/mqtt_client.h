@@ -25,7 +25,7 @@ typedef enum {
   MQTT_USER_EVENT,
 } esp_mqtt_event_id_t;
 
-typedef struct {
+typedef struct esp_mqtt_event_t {
   esp_mqtt_event_id_t event_id;
   const char* topic;
   int topic_len;
@@ -44,7 +44,7 @@ typedef const char* esp_event_base_t;
 typedef void (*esp_event_handler_t)(void* event_handler_arg, esp_event_base_t event_base,
                                     int32_t event_id, void* event_data);
 
-typedef struct {
+typedef struct esp_mqtt_client_config_t {
   struct {
     struct {
       const char* uri;
