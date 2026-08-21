@@ -49,7 +49,9 @@ class Entity : public Core::IntrusiveNode<Entity> {
   int get_state_qos() const { return (get_flags() & EPHEMERAL_STATE_QOS) ? 0 : 1; }
   int get_state_retain() const { return (get_flags() & RETAIN_STATE) ? 1 : 0; }
   bool expects_commands() const { return (get_flags() & EXPECTS_COMMANDS) != 0; }
+
   void clear_flag(uint8_t flag) { flags_.fetch_and(~flag, std::memory_order_release); }
+  void set_flag(uint8_t flag) { flags_.fetch_or(flag, std::memory_order_release); }
 
   virtual ~Entity() = default;
 

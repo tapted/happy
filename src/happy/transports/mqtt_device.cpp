@@ -144,28 +144,29 @@ void MqttDevice::pump_queue() {
       }
 
     } else if (pending_flags & Entity::FLAG_STATE) {
+      // Clear First. If state changes after reading here, we'll read it again on the next pump.
+      entity.clear_flag(Entity::FLAG_STATE);
+
       entity.get_state_topic(topic);
       int qos = entity.get_state_qos();
       int retain = entity.get_state_retain();
 
+      std::string payload = entity.get_state_payload();
+
       if (qos > 0) {
         // --- CRITICAL STATE (QoS 1) ---
         // Puts it in the sliding window. Must receive an ACK.
-        msg_id = mqtt_enqueue(topic, entity.get_state_payload().c_str(), qos, retain);
+        msg_id = mqtt_enqueue(topic, payload.c_str(), qos, retain);
         if (msg_id >= 0) {
-          entity.clear_flag(Entity::FLAG_STATE);
           pending_acks_.fetch_add(1, std::memory_order_relaxed);
+        } else {
+          // Send failed! Put the flag back so we try again next time.
+          entity.set_flag(Entity::FLAG_STATE);
         }
-        // If msg_id < 0, the flag remains set. An eventual ACK from another
-        // in-flight packet or a reconnect event will re-trigger the pump.
       } else {
         // --- EPHEMERAL TELEMETRY (QoS 0) ---
-        // Fire and forget.
-        msg_id = mqtt_enqueue(topic, entity.get_state_payload().c_str(), 0, 0);
-
-        // Unconditionally clear the flag to prevent deadlocks.
-        // If the socket was full, this specific reading is dropped safely.
-        entity.clear_flag(Entity::FLAG_STATE);
+        // Fire and forget (flag remains cleared regardless).
+        msg_id = mqtt_enqueue(topic, payload.c_str(), 0, 0);
       }
     }
   }
@@ -177,6 +178,14 @@ void MqttDevice::pump_queue() {
     ESP_LOGD(TAG, "Pump %d complete. Pending ACKs: %d. Last topic: %s, last msg_id: %d",
              int{pump_count}, int{pending_acks_.load(std::memory_order_acquire)}, topic, msg_id);
   }
+
+  // TODO: If we fail to enqueue a message, we need to schedule a delayed retry. Otherwise, if the
+  // pump is idle, it may never be poked again. In reality, there's usually always some interval
+  // timer that will poke the device.
+  // if (msg_id < 0 && pending_acks_.load(std::memory_order_acquire) == 0) {
+  //   ESP_LOGW(TAG, "Failed to enqueue, and no ACKs pending. Scheduling retry.");
+  //   schedule_delayed_poke(1000);  // Wait 1 second and try again
+  // }
 }
 
 void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
@@ -222,11 +231,14 @@ void MqttDevice::handle_event(int32_t event_id, esp_mqtt_event_handle_t event) {
 
     case MQTT_EVENT_SUBSCRIBED:
     case MQTT_EVENT_PUBLISHED:
-    case MQTT_EVENT_DELETED:
-      pending_acks_.fetch_sub(1, std::memory_order_release);
+    case MQTT_EVENT_DELETED: {
+      // Prevent underflow during internal MQTT cleanup.
+      int x = pending_acks_.load(std::memory_order_acquire);
+      while (x > 0 && !pending_acks_.compare_exchange_weak(x, x - 1, std::memory_order_release))  //
+        ;
       poke();
       break;
-
+    }
     default:
       ESP_LOGW(TAG, "Unhandled MQTT Event ID: %d", event_id);
       break;
