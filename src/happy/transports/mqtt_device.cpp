@@ -3,9 +3,14 @@
 #include <esp_log.h>
 #include <mqtt_client.h>
 
-#include "espbase/main_loop.hpp"
 #include "espbase/stack_json/buffer.hpp"
 #include "happy/entity.hpp"
+
+#ifdef __x86_64__
+#include "espbase/stdlib_main_loop.hpp"
+#else
+#include "espbase/main_loop.hpp"
+#endif
 
 namespace HAPPY::Transports {
 
@@ -73,13 +78,6 @@ void MqttDevice::static_event_handler(void* handler_args, esp_event_base_t /*bas
 }
 
 void MqttDevice::pump_queue() {
-  // For these statics to work without race conditions, we must always run on the same core.
-  static BaseType_t core_id = xPortGetCoreID();
-  if (xPortGetCoreID() != core_id) {
-    ESP_LOGE(TAG, "pump_queue() switched to core: %d (expected %d)", xPortGetCoreID(), core_id);
-    core_id = xPortGetCoreID();
-  }
-
   static uint16_t pump_count = 0;
   static bool was_disconnected = true;
   static bool have_logged_since_reconnected = false;

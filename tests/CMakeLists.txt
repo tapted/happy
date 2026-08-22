@@ -48,6 +48,8 @@ add_executable(happy_tests
     ${CMAKE_CURRENT_SOURCE_DIR}/../../espbase/src/espbase/mac_address.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../espbase/src/espbase/stack_json/document.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../../espbase/src/espbase/stack_json/buffer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../espbase/src/espbase/stack_json/printer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../espbase/src/espbase/stack_json/pretty_buffer.cpp
 )
 
 target_include_directories(happy_tests PRIVATE
@@ -56,6 +58,7 @@ target_include_directories(happy_tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../emulated/esp-idf/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../../espbase/src
     ${CMAKE_CURRENT_SOURCE_DIR}/../../espbase/emulated/esp-idf/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../espbase/emulated
 )
 
 target_link_libraries(happy_tests PRIVATE

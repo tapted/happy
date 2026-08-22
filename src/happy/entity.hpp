@@ -5,12 +5,12 @@
 #include <string>
 #include <string_view>
 
-#include "espbase/json_fwd.h"
 #include "happy/core/intrusive_list.hpp"
 
 namespace sjson {
 class Buffer;
 class Builder;
+class Printer;
 }  // namespace sjson
 
 namespace HAPPY {
@@ -56,6 +56,8 @@ class Entity : public Core::IntrusiveNode<Entity> {
   virtual ~Entity() = default;
 
   void get_discovery_topic(topic_buf_t& buf) const;
+
+  void print_state_topic(sjson::Printer& print) const;
   const char* get_state_topic(topic_buf_t& buf) const;
   void get_command_topic(topic_buf_t& buf) const;
 
@@ -75,7 +77,6 @@ class Entity : public Core::IntrusiveNode<Entity> {
   void save_nvs_blob(const void* src, size_t size) const;
 
   // Bootstraps the standard JSON fields required by all HA entities
-  void inject_base_config(JsonObjectBuilder& builder) const;
   bool emit_with_base_config(sjson::Buffer& buffer, sjson::Builder& builder) const;
 };
 

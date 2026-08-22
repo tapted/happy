@@ -2,7 +2,6 @@
 
 #include <cstdio>
 
-#include "espbase/json.hpp"
 #include "espbase/nvs_store.hpp"
 #include "espbase/stack_json/json.hpp"
 #include "happy/device.hpp"
@@ -39,6 +38,12 @@ void Entity::get_discovery_topic(topic_buf_t& buf) const {
   topic_buf_t topic_prefix_buf;
   const char* topic_prefix = device_.get_topic_prefix(topic_prefix_buf, object_id_);
   snprintf(buf, sizeof(buf), "homeassistant/%s/%s/config", domain_, topic_prefix);
+}
+
+void Entity::print_state_topic(sjson::Printer& print) const {
+  topic_buf_t topic_prefix_buf;
+  const char* topic_prefix = device_.get_topic_prefix(topic_prefix_buf, object_id_);
+  print("%s/state", topic_prefix);
 }
 
 const char* Entity::get_state_topic(topic_buf_t& buf) const {
@@ -84,29 +89,13 @@ void Entity::save_nvs_blob(const void* src, size_t size) const {
   }
 }
 
-void Entity::inject_base_config(JsonObjectBuilder& builder) const {
-  char buf[128];
-  const char* unique_id = device_.get_unique_id(buf, object_id_);
-
-  builder.set("name", name_);
-  builder.set("unique_id", unique_id);
-
-  get_state_topic(buf);
-  builder.set("state_topic", (const char*)buf);
-
-  // Inject the physical device grouping data
-  device_.inject_into(builder);
-}
-
 bool Entity::emit_with_base_config(sjson::Buffer& buffer, sjson::Builder& builder) const {
   char id_buf[128];
-  char topic_buf[128];
   device_.get_unique_id(id_buf, object_id_);
-  get_state_topic(topic_buf);
 
   auto base_doc = stack_json(node("name", name_),        //
                              node("unique_id", id_buf),  //
-                             node("state_topic", topic_buf));
+                             node("state_topic", [&](auto& print) { print_state_topic(print); }));
 
   builder.add(base_doc);
   return device_.emit_with(buffer, builder);

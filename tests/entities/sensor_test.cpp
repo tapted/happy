@@ -3,6 +3,8 @@
 #include <gtest/gtest.h>
 
 #include "cJSON.h"
+#include "espbase/stack_json/buffer.hpp"
+#include "espbase/stack_json/pretty_buffer.hpp"
 #include "happy_test_harness.hpp"
 
 namespace HAPPY::Test {
@@ -10,6 +12,44 @@ namespace HAPPY::Test {
 class SensorEntityTest : public HappyIntegrationTestHarness {};
 
 static std::string current_val;  // Global variable to simulate sensor value
+
+TEST_F(SensorEntityTest, Payload) {
+  current_val = "23.5";
+  HAPPY::Entities::Sensor sensor(device_, "temperature", "Temperature",
+                                 {
+                                     .device_class = "temperature",
+                                     .unit_of_measurement = "°C",
+                                     .icon = "mdi:thermometer",
+                                     .entity_category = "diagnostic",
+                                     .get_value = [](auto*) { return current_val; },
+                                 });
+
+  // connect_and_pump_until_idle();
+
+  sjson::StackBuffer<1024> buffer;
+  sjson::PrettyBuffer pretty(buffer, 2);
+  EXPECT_TRUE(sensor.get_discovery_payload(pretty));
+  EXPECT_STREQ(
+      buffer.c_str(),
+      R"({
+  "device_class": "temperature",
+  "unit_of_measurement": "°C",
+  "icon": "mdi:thermometer",
+  "entity_category": "diagnostic",
+  "name": "Temperature",
+  "unique_id": "test_device_temperature",
+  "state_topic": "test_device/temperature/state",
+  "device": {
+    "identifiers": [
+      "test_device"
+    ],
+    "name": "Test Device",
+    "manufacturer": "Test Manufacturer",
+    "model": "Test Model",
+    "sw_version": "1.0.0"
+  }
+})");
+}
 
 TEST_F(SensorEntityTest, DiscoveryAndInitialStatePublication) {
   current_val = "23.5";
