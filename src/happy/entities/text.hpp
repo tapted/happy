@@ -33,7 +33,7 @@ class Text : public PersistentEntity<Text, TextState> {
   std::string_view get_value() const { return state().value; }
   
   bool get_discovery_payload(sjson::Buffer& buffer) override;
-  std::string get_state_payload() override;
+  bool get_state_payload(sjson::Buffer& buffer) override;
   void handle_command(std::string_view payload) override;
 
   void on_change() override {

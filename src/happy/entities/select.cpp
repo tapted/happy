@@ -3,6 +3,7 @@
 
 #include <esp_log.h>
 
+#include "espbase/stack_json/buffer.hpp"
 #include "espbase/stack_json/json.hpp"
 
 namespace HAPPY::Entities {
@@ -21,8 +22,8 @@ bool Select::get_discovery_payload(sjson::Buffer& buffer) {
   return this->emit_with_base_config(buffer, builder);
 }
 
-std::string Select::get_state_payload() {
-  return std::string(get_selected());  // Select state is just the plain text string
+bool Select::get_state_payload(sjson::Buffer& buffer) {
+  return buffer.write(get_selected());  // Select state is just the plain text string
 }
 
 void Select::handle_command(std::string_view payload) {

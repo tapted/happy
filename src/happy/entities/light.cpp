@@ -2,7 +2,6 @@
 
 #include <esp_log.h>
 
-#include "espbase/json.hpp"
 #include "espbase/stack_json/json.hpp"
 
 namespace HAPPY::Entities {
@@ -23,37 +22,28 @@ bool Light::get_discovery_payload(sjson::Buffer& buffer) {
   return this->emit_with_base_config(buffer, builder);
 }
 
-std::string Light::get_state_payload() {
-  JsonDocument doc;
-  JsonObjectBuilder builder(doc.get());
-
-  builder.set("state", state().is_on ? "ON" : "OFF");
-  builder.set("brightness", state().brightness);
-  builder.with_object("color", [&](auto& color) {
-    color.set("r", state().r);
-    color.set("g", state().g);
-    color.set("b", state().b);
-  });
-
-  return doc.to_string();
+bool Light::get_state_payload(sjson::Buffer& buffer) {
+  auto color = path("color");
+  auto doc = stack_json(node("state", state().is_on ? "ON" : "OFF"),  //
+                        node("brightness", state().brightness),       //
+                        node(color("r"), state().r),                  //
+                        node(color("g"), state().g),                  //
+                        node(color("b"), state().b)                   //
+  );
+  return doc.emit(buffer);
 }
 
 void Light::handle_command(const std::string_view payload) {
-  unique_cjson root_ptr{cJSON_ParseWithLength(payload.data(), payload.length())};
-
-  // Wrap the raw pointer in our non-owning view
-  JsonNodeView root(root_ptr.get());
-  if (!root) return;
-
   auto state = this->state();
-
-  root.change(state.is_on, "state", [](auto s) { return s == "ON"; });
-  root.change(state.brightness, "brightness");
-  if (auto color = root["color"]) {
-    color.change(state.r, "r");
-    color.change(state.g, "g");
-    color.change(state.b, "b");
-  }
+  auto color = path("color");
+  std::string_view is_on;
+  auto parser = json_parser(bind("state", is_on),                  //
+                            bind("brightness", state.brightness),  //
+                            bind(color("r"), state.r),             //
+                            bind(color("g"), state.g),             //
+                            bind(color("b"), state.b));
+  parser.parse(payload);
+  state.is_on = (is_on == "ON");
 
   ESP_LOGD("Light", "Command received for %s: %.*s", object_id_, static_cast<int>(payload.length()),
            payload.data());
@@ -61,4 +51,5 @@ void Light::handle_command(const std::string_view payload) {
            state.brightness, state.r, state.g, state.b);
   set_state(state);
 }
+
 }  // namespace HAPPY::Entities

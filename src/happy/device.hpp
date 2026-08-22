@@ -2,7 +2,6 @@
 
 #include <string_view>
 
-#include "espbase/json_fwd.h"
 #include "happy/core/intrusive_list.hpp"
 
 namespace sjson {
@@ -52,7 +51,6 @@ class Device {
   const char* get_name_suffix() const { return config_.name; }
 
   // Injects the HA "device" grouping block into an existing json.h builder
-  void inject_into(JsonObjectBuilder& builder) const;
   bool emit_with(sjson::Buffer& buffer, sjson::Builder& builder) const;
 
   // --- Registry Implementation ---

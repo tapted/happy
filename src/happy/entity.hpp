@@ -63,7 +63,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
 
   virtual void load() {}
   virtual bool get_discovery_payload(sjson::Buffer& buffer) = 0;
-  virtual std::string get_state_payload() { return std::string(); }
+  virtual bool get_state_payload(sjson::Buffer& buffer);
 
   // Default empty implementation. Sensors ignore this; Lights override it.
   virtual void handle_command(std::string_view /*payload*/) {}

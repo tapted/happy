@@ -19,8 +19,8 @@ bool Text::get_discovery_payload(sjson::Buffer& buffer) {
   return this->emit_with_base_config(buffer, builder);
 }
 
-std::string Text::get_state_payload() {
-  return state().value;
+bool Text::get_state_payload(sjson::Buffer& buffer) {
+  return buffer.write(state().value);
 }
 
 void Text::handle_command(std::string_view payload) {

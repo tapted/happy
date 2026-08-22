@@ -28,13 +28,7 @@ class Sensor : public Entity {
   bool get_discovery_payload(sjson::Buffer& buffer) override;
 
   // Evaluates the lambda to get the current ESP32 state
-  std::string get_state_payload() override {
-    std::string value = config_.get_value(user_ctx);
-    if (config_.on_state_publish) {
-      config_.on_state_publish(*this, value);
-    }
-    return value;
-  }
+  bool get_state_payload(sjson::Buffer& buffer) override;
 
  private:
   // We copy config_. We could store a const reference (and delete the Sensor constructor that would

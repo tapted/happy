@@ -40,6 +40,10 @@ void Entity::get_discovery_topic(topic_buf_t& buf) const {
   snprintf(buf, sizeof(buf), "homeassistant/%s/%s/config", domain_, topic_prefix);
 }
 
+bool Entity::get_state_payload(sjson::Buffer& /*buffer*/) {
+  return true;  // Not an error - just an empty string.
+}
+
 void Entity::print_state_topic(sjson::Printer& print) const {
   topic_buf_t topic_prefix_buf;
   const char* topic_prefix = device_.get_topic_prefix(topic_prefix_buf, object_id_);
@@ -100,4 +104,5 @@ bool Entity::emit_with_base_config(sjson::Buffer& buffer, sjson::Builder& builde
   builder.add(base_doc);
   return device_.emit_with(buffer, builder);
 }
+
 }  // namespace HAPPY

@@ -2,6 +2,7 @@
 
 #include <charconv>
 
+#include "espbase/stack_json/buffer.hpp"
 #include "espbase/stack_json/json.hpp"
 
 namespace HAPPY::Entities {
@@ -18,10 +19,9 @@ bool Time::get_discovery_payload(sjson::Buffer& buffer) {
   return this->emit_with_base_config(buffer, builder);
 }
 
-std::string Time::get_state_payload() {
-  char buffer[12];  // "HH:MM:SS" + null terminator
-  std::snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d", hour(), minute(), second());
-  return std::string(buffer);
+bool Time::get_state_payload(sjson::Buffer& buffer) {
+  sjson::Printer print(buffer);
+  return print("\"%02d:%02d:%02d\"", hour(), minute(), second());
 }
 
 void Time::handle_command(std::string_view payload) {

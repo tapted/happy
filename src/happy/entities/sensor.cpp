@@ -7,13 +7,21 @@
 namespace HAPPY::Entities {
 
 bool Sensor::get_discovery_payload(sjson::Buffer& buffer) {
-  sjson::StackBuilder<32> builder;  // Max 32 entries.
-  auto doc = stack_json(node_if("device_class", config_.device_class),                //
+  sjson::StackBuilder<32> builder;                                      // Max 32 entries.
+  auto doc = stack_json(node_if("device_class", config_.device_class),  //
                         node_if("unit_of_measurement", config_.unit_of_measurement),  //
                         node_if("icon", config_.icon),                                //
                         node_if("entity_category", config_.entity_category));
   builder.add(doc);
   return this->emit_with_base_config(buffer, builder);
+}
+
+bool Sensor::get_state_payload(sjson::Buffer& buffer) {
+  std::string value = config_.get_value(user_ctx);
+  if (config_.on_state_publish) {
+    config_.on_state_publish(*this, value);
+  }
+  return buffer.write(value);
 }
 
 }  // namespace HAPPY::Entities
