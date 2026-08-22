@@ -2,7 +2,7 @@
 
 #include <gtest/gtest.h>
 
-#include "cJSON.h"
+#include <ArduinoJson.h>
 #include "espbase/stack_json/buffer.hpp"
 #include "espbase/stack_json/pretty_buffer.hpp"
 #include "happy_test_harness.hpp"
@@ -74,42 +74,27 @@ TEST_F(SensorEntityTest, DiscoveryAndInitialStatePublication) {
   EXPECT_EQ(discovery_call->qos, 1);
   EXPECT_EQ(discovery_call->retain, 1);
 
-  // Since we're building with cJSON, the order of the keys in the JSON payload is not guaranteed,
-  // so we parse it and check the individual fields instead of doing a string comparison.
-  // One day.. I should probably ditch cJSON and hardcode JSON templates.
-#if 1
-  // Parse discovery JSON payload
-  cJSON* root = cJSON_Parse(discovery_call->payload.c_str());
-  ASSERT_NE(root, nullptr) << "Failed to parse discovery JSON payload";
+  // Parse discovery JSON payload using ArduinoJson
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, discovery_call->payload);
+  ASSERT_FALSE(err) << "Failed to parse discovery JSON payload: " << err.c_str();
 
-  cJSON* name_item = cJSON_GetObjectItem(root, "name");
-  ASSERT_NE(name_item, nullptr);
-  EXPECT_STREQ(name_item->valuestring, "Temperature");
+  EXPECT_EQ(doc["name"], "Temperature");
+  EXPECT_EQ(doc["state_topic"], "test_device/temperature/state");
+  EXPECT_EQ(doc["device_class"], "temperature");
+  EXPECT_EQ(doc["unit_of_measurement"], "°C");
+  EXPECT_EQ(doc["icon"], "mdi:thermometer");
+  EXPECT_EQ(doc["entity_category"], "diagnostic");
+  EXPECT_EQ(doc["unique_id"], "test_device_temperature");
 
-  cJSON* state_topic_item = cJSON_GetObjectItem(root, "state_topic");
-  ASSERT_NE(state_topic_item, nullptr);
-  EXPECT_STREQ(state_topic_item->valuestring, "test_device/temperature/state");
+  JsonObject dev_obj = doc["device"];
+  ASSERT_FALSE(dev_obj.isNull());
+  EXPECT_EQ(dev_obj["name"], "Test Device");
+  EXPECT_EQ(dev_obj["manufacturer"], "Test Manufacturer");
+  EXPECT_EQ(dev_obj["model"], "Test Model");
+  EXPECT_EQ(dev_obj["sw_version"], "1.0.0");
+  EXPECT_EQ(dev_obj["identifiers"][0], "test_device");
 
-  cJSON* dev_class_item = cJSON_GetObjectItem(root, "device_class");
-  ASSERT_NE(dev_class_item, nullptr);
-  EXPECT_STREQ(dev_class_item->valuestring, "temperature");
-
-  cJSON* unit_item = cJSON_GetObjectItem(root, "unit_of_measurement");
-  ASSERT_NE(unit_item, nullptr);
-  EXPECT_STREQ(unit_item->valuestring, "°C");
-
-  cJSON* dev_obj = cJSON_GetObjectItem(root, "device");
-  ASSERT_NE(dev_obj, nullptr);
-  cJSON* dev_name = cJSON_GetObjectItem(dev_obj, "name");
-  ASSERT_NE(dev_name, nullptr);
-  EXPECT_STREQ(dev_name->valuestring, "Test Device");
-
-  cJSON_Delete(root);
-#else
-  EXPECT_EQ(
-      discovery_call->payload,
-      R"({"name":"Temperature","state_topic":"test_device/temperature/state","device_class":"temperature","unit_of_measurement":"°C","device":{"identifiers":"test_device","name":"Test Device","manufacturer":"Test Manufacturer","model":"Test Model","sw_version":"1.0.0"}})");
-#endif
   // 2. Verify Initial State Topic and Payload
   std::string expected_state_topic = "test_device/temperature/state";
   const EnqueueCall* state_call = find_enqueue_call(expected_state_topic);

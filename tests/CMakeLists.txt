@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.24)
-set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 project(happy_tests CXX C)
 
 # Enforce modern C++26
@@ -20,21 +19,12 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(googletest)
 
 FetchContent_Declare(
-  cjson
-  GIT_REPOSITORY https://github.com/DaveGamble/cJSON.git
-  GIT_TAG        v1.7.19
+  ArduinoJson
+  GIT_REPOSITORY https://github.com/bblanchon/ArduinoJson.git
+  GIT_TAG        v7.3.0
 )
 
-#target_compile_options(cjson PRIVATE -Wno-keyword-macro)
-add_compile_options(-Wno-keyword-macro)
-SET(ENABLE_CJSON_TEST OFF CACHE BOOL "" FORCE)
-SET(ENABLE_CJSON_UTILS OFF CACHE BOOL "" FORCE)
-
-FetchContent_MakeAvailable(cjson)
-
-target_include_directories(cjson INTERFACE 
-    $<BUILD_INTERFACE:${cjson_SOURCE_DIR}>
-)
+FetchContent_MakeAvailable(ArduinoJson)
 
 enable_testing()
 
@@ -64,8 +54,9 @@ target_include_directories(happy_tests PRIVATE
 
 target_link_libraries(happy_tests PRIVATE
     gtest_main
-    cjson
+    ArduinoJson
 )
 
 include(GoogleTest)
 gtest_discover_tests(happy_tests)
+
