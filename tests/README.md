@@ -4,7 +4,7 @@ This directory contains standalone integration regression tests for the `HAPPY` 
 
 ## Architecture & Design
 
-1. **Standalone & Self-Contained**: Uses CMake `FetchContent` to download GoogleTest (v1.17.0) and cJSON (v1.7.19) automatically.
+1. **Standalone & Self-Contained**: Uses CMake `FetchContent` to download GoogleTest (v1.17.0) automatically.
 2. **Mock MQTT Transport (`mock_mqtt`)**: Emulates the ESP-IDF MQTT client (`mqtt_client.h`). Records all calls to `esp_mqtt_client_enqueue`, `esp_mqtt_client_subscribe_single`, and `esp_mqtt_client_publish`, and simulates MQTT events (like `MQTT_EVENT_CONNECTED`, `MQTT_EVENT_PUBLISHED`, `MQTT_EVENT_SUBSCRIBED`).
 3. **Integration Test Harness (`HappyIntegrationTestHarness`)**: All entity test suites inherit from `HappyIntegrationTestHarness`. It manages an `MqttDevice` instance, hooks up the mock MQTT client, drives the pumping queue until idle (`connect_and_pump_until_idle()`), and provides helper methods to inspect MQTT calls and payloads.
 

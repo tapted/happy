@@ -29,7 +29,7 @@ HAPPY is split into two primary domains:
 2. **Transports (`HAPPY::Transport`)**: The networking layer. A transport acts as a registry for entities, translating their state into protocol-specific data (e.g., JSON payloads over TCP for MQTT, or Endpoint Clusters for Matter).
 
 ### Current Focus: MQTT Auto-Discovery
-The current stable transport implements Home Assistant MQTT Auto-Discovery. It natively handles device grouping, topic registration, and zero-copy JSON parsing using `cJSON`.
+The current stable transport implements Home Assistant MQTT Auto-Discovery. It natively handles device grouping, topic registration, and zero-copy JSON parsing using [StackJson](https://github.com/tapted/espbase/tree/main/src/espbase/stack_json#stackjson-).
 
 ## Quick Start (MQTT Example)
 

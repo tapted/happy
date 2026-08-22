@@ -7,10 +7,9 @@
 #include <esp_system.h>
 #include <esp_wifi.h>
 #include <string>
-#include <string_view>
 
-#include "espbase/json.hpp"
 #include "espbase/nvs_store.hpp"
+#include "espbase/stack_json/json.hpp"
 #include "espbase/trampoline.hpp"
 
 namespace HAPPY::Entities {
@@ -82,39 +81,34 @@ void OtaController::ota_step(EspTask<OtaController>& task) {
     return;
   }
 
-  // Dynamic Heap Buffer for the Manifest
-  // Saves FreeRTOS task stack and automatically scales to any manifest size
+  // Dynamic Heap Buffer for the Manifest. We're about to update so who cares about fragmentation.
   std::string json_buffer(content_length, '\0');
   int read_len = esp_http_client_read(client, json_buffer.data(), content_length);
   esp_http_client_cleanup(client);
 
   if (read_len <= 0) return;
 
-  unique_cjson root_ptr{cJSON_ParseWithLength(json_buffer.data(), read_len)};
-  JsonNodeView root(root_ptr.get());
-  if (!root) {
-    ESP_LOGE(TAG, "Failed to parse manifest.json");
+  // Manifest looks like
+  // [project]: {
+  //     "version": dynamic_version,
+  //     "image": bin_filename
+  // }
+  std::string new_version, image;
+  auto project = path(proj);
+  auto parser = json_parser(bind(project("version"), new_version), bind(project("image"), image));
+  parser.parse(std::string_view(json_buffer.data(), read_len));
+
+  if (new_version.empty() || image.empty()) {
+    ESP_LOGE(TAG, "Manifest missing version or image for project: %s", proj.c_str());
     return;
   }
 
-  JsonNodeView project_node = root[proj.c_str()];
-  if (!project_node) {
-    ESP_LOGW(TAG, "Project '%s' not found in manifest.", proj.c_str());
-    return;
-  }
+  if (new_version != self->current_version_) {
+    ESP_LOGI(TAG, "New version found! Upgrading from %s to %s", self->current_version_.c_str(),
+             new_version.c_str());
 
-  auto ver_opt = project_node["version"].as_string();
-  auto img_opt = project_node["image"].as_string();
-
-  if (ver_opt && img_opt) {
-    if (*ver_opt != self->current_version_) {
-      std::string new_version(*ver_opt);
-      ESP_LOGI(TAG, "New version found! Upgrading from %s to %s", self->current_version_.c_str(),
-               new_version.c_str());
-
-      std::string bin_url = scheme + host + slash + std::string(*img_opt);
-      perform_ota(bin_url.c_str(), new_version.c_str());
-    }
+    std::string bin_url = scheme + host + slash + image;
+    perform_ota(bin_url.c_str(), new_version.c_str());
   } else {
     ESP_LOGI(TAG, "Firmware is up to date (%s).", self->current_version_.c_str());
   }
