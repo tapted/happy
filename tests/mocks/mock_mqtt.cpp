@@ -1,5 +1,6 @@
 #include "mocks/mock_mqtt.hpp"
 
+#include "espbase/stdlib_main_loop.hpp"
 #include "happy/transports/mqtt_device.hpp"
 
 namespace HAPPY::Test {
@@ -24,6 +25,7 @@ void MockMqtt::simulate_connect() {
     esp_mqtt_event_t event = {};
     event.event_id = MQTT_EVENT_CONNECTED;
     registered_handler_(registered_handler_arg_, "MQTT_EVENT", MQTT_EVENT_CONNECTED, &event);
+    main_loop.wait_idle();
   }
 }
 
@@ -32,6 +34,7 @@ void MockMqtt::simulate_disconnect() {
     esp_mqtt_event_t event = {};
     event.event_id = MQTT_EVENT_DISCONNECTED;
     registered_handler_(registered_handler_arg_, "MQTT_EVENT", MQTT_EVENT_DISCONNECTED, &event);
+    main_loop.wait_idle();
   }
 }
 
@@ -50,11 +53,14 @@ void MockMqtt::simulate_ack_next_pending() {
 
 void MockMqtt::pump_until_idle_or_max(HAPPY::Transports::MqttDevice& device, int max_iterations) {
   int iterations = 0;
+  main_loop.wait_idle();
   while (!device.is_idle() && iterations < max_iterations) {
     if (!pending_acks_.empty()) {
       simulate_ack_next_pending();
+      main_loop.wait_idle();
     } else {
       device.poke();
+      main_loop.wait_idle();
     }
     ++iterations;
   }
