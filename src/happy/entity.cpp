@@ -104,9 +104,9 @@ bool Entity::emit_with_base_config(sjson::Buffer& buffer, sjson::Builder& builde
   device_.get_unique_id(id_buf, object_id_);
   get_state_topic(topic_buf);
 
-  auto base_doc = stack_json(node(path("name"), name_),        //
-                             node(path("unique_id"), id_buf),  //
-                             node(path("state_topic"), topic_buf));
+  auto base_doc = stack_json(node("name", name_),        //
+                             node("unique_id", id_buf),  //
+                             node("state_topic", topic_buf));
 
   builder.add(base_doc);
   return device_.emit_with(buffer, builder);

@@ -12,12 +12,12 @@ bool Light::get_discovery_payload(sjson::Buffer& buffer) {
   topic_buf_t command_topic;
   get_command_topic(command_topic);
 
-  auto doc = stack_json(node(path("schema"), "json"),                //
-                        node(path("command_topic"), command_topic),  //
-                        node(path("optimistic"), false),             //
-                        node_if(path("icon"), config_.icon),         //
-                        node(path("supported_color_modes"),
-                             stack_array(config_.supports_rgb ? "rgb" : "brightness")));
+  auto doc = stack_json(
+      node("schema", "json"),                //
+      node("command_topic", command_topic),  //
+      node("optimistic", false),             //
+      node_if("icon", config_.icon),         //
+      node("supported_color_modes", stack_array(config_.supports_rgb ? "rgb" : "brightness")));
 
   builder.add(doc);
   return this->emit_with_base_config(buffer, builder);

@@ -11,8 +11,8 @@ bool Time::get_discovery_payload(sjson::Buffer& buffer) {
   topic_buf_t command_topic;
   get_command_topic(command_topic);
 
-  auto doc = stack_json(node(path("command_topic"), command_topic),  //
-                        node_if(path("icon"), config_.icon));
+  auto doc = stack_json(node("command_topic", command_topic),  //
+                        node_if("icon", config_.icon));
 
   builder.add(doc);
   return this->emit_with_base_config(buffer, builder);

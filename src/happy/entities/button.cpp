@@ -9,10 +9,10 @@ bool Button::get_discovery_payload(sjson::Buffer& buffer) {
   topic_buf_t command_topic;
   get_command_topic(command_topic);
 
-  auto doc = stack_json(node(path("command_topic"), command_topic),  //
-                        node_if(path("icon"), config_.icon),         //
-                        node_if(path("device_class"), config_.device_class),
-                        node_if(path("entity_category"), config_.entity_category));
+  auto doc = stack_json(node("command_topic", command_topic),  //
+                        node_if("icon", config_.icon),         //
+                        node_if("device_class", config_.device_class),
+                        node_if("entity_category", config_.entity_category));
 
   builder.add(doc);
   return this->emit_with_base_config(buffer, builder);

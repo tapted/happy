@@ -5,7 +5,6 @@
 
 #include "espbase/stack_json/json.hpp"
 
-
 namespace HAPPY::Entities {
 
 bool Select::get_discovery_payload(sjson::Buffer& buffer) {
@@ -13,10 +12,10 @@ bool Select::get_discovery_payload(sjson::Buffer& buffer) {
   topic_buf_t command_topic;
   get_command_topic(command_topic);
 
-  auto doc = stack_json(node(path("command_topic"), command_topic),  //
-                        node_if(path("icon"), config_.icon),         //
-                        node_if(path("entity_category"), config_.entity_category),
-                        node(path("options"), span_array(config_.options)));
+  auto doc = stack_json(node("command_topic", command_topic),  //
+                        node_if("icon", config_.icon),         //
+                        node_if("entity_category", config_.entity_category),
+                        node("options", span_array(config_.options)));
 
   builder.add(doc);
   return this->emit_with_base_config(buffer, builder);
