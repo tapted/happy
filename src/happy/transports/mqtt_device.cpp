@@ -2,6 +2,7 @@
 
 #include <esp_log.h>
 #include <mqtt_client.h>
+#include <mutex>
 
 #include "espbase/stack_json/buffer.hpp"
 #include "happy/entity.hpp"
@@ -78,6 +79,12 @@ void MqttDevice::static_event_handler(void* handler_args, esp_event_base_t /*bas
 }
 
 void MqttDevice::pump_queue() {
+  // It's a big mutex: the logic and all the statics here will fail hopelessly if there are ever
+  // two pumps running at the same time. But it should never happen so long as pumps are only
+  // scheduled from the main loop, and the main loop is single-threaded.
+  static std::mutex pump_mutex;
+  std::lock_guard<std::mutex> lock(pump_mutex);
+
   static uint16_t pump_count = 0;
   static bool was_disconnected = true;
   static bool have_logged_since_reconnected = false;
