@@ -19,14 +19,14 @@ class Time : public PersistentEntity<Time, TimeState> {
 
   Time(Device& device, const char* object_id, const char* name, Config config,
        void* on_update_ctx = nullptr)
-      : PersistentEntity(device, "time", object_id, name),
+      : PersistentEntity(device, "time", object_id, name, true /* expects_commands */),
         config_(std::move(config)),
         on_update_ctx(on_update_ctx) {}
 
   uint8_t hour() const { return state().hour_; }
   uint8_t minute() const { return state().minute_; }
   uint8_t second() const { return state().second_; }
-  
+
   bool get_discovery_payload(sjson::Buffer& buffer) override;
   bool get_state_payload(sjson::Buffer& buffer) override;
   void handle_command(std::string_view payload) override;

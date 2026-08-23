@@ -40,7 +40,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
   static constexpr uint8_t EXPECTS_COMMANDS = 1 << 5;
 
   Entity(Device& device, const char* domain, const char* object_id, const char* name,
-         bool expects_commands = false);
+         bool expects_commands);
 
   void request_publish();
   void request_discovery();

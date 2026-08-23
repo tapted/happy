@@ -20,7 +20,7 @@ class Text : public PersistentEntity<Text, TextState> {
 
   Text(Device& device, const char* object_id, const char* name, Config config,
        void* on_update_ctx = nullptr)
-      : PersistentEntity(device, "text", object_id, name, true),
+      : PersistentEntity(device, "text", object_id, name, true /* expects_commands */),
         config_(config),
         on_update_ctx(on_update_ctx) {}
 

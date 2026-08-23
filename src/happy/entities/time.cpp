@@ -20,8 +20,7 @@ bool Time::get_discovery_payload(sjson::Buffer& buffer) {
 }
 
 bool Time::get_state_payload(sjson::Buffer& buffer) {
-  sjson::Printer print(buffer);
-  return print("\"%02d:%02d:%02d\"", hour(), minute(), second());
+  return sjson::Printer::printx(buffer, "%02d:%02d:%02d", hour(), minute(), second());
 }
 
 void Time::handle_command(std::string_view payload) {

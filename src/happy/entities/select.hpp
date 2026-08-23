@@ -22,7 +22,7 @@ class Select : public PersistentEntity<Select, SelectState> {
 
   Select(Device& device, const char* object_id, const char* name, Config config,
          void* on_update_ctx = nullptr)
-      : PersistentEntity(device, "select", object_id, name, true),
+      : PersistentEntity(device, "select", object_id, name, true /* expects_commands */),
         config_(std::move(config)),
         on_update_ctx(on_update_ctx) {}
 

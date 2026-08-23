@@ -22,7 +22,9 @@ class Sensor : public Entity {
 
   Sensor(Device& device, const char* object_id, const char* name, Config config,
          void* user_ctx = nullptr)
-      : Entity(device, "sensor", object_id, name), config_(std::move(config)), user_ctx(user_ctx) {}
+      : Entity(device, "sensor", object_id, name, false /* expects_commands */),
+        config_(std::move(config)),
+        user_ctx(user_ctx) {}
 
   const Config& config() const { return config_; }
   bool get_discovery_payload(sjson::Buffer& buffer) override;
