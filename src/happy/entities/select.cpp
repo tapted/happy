@@ -22,7 +22,7 @@ bool Select::get_discovery_payload(sjson::Buffer& buffer) {
   return this->emit_with_base_config(buffer, builder);
 }
 
-bool Select::get_state_payload(sjson::Buffer& buffer) {
+size_t Select::get_state_payload(sjson::Buffer& buffer) {
   return buffer.write(get_selected());  // Select state is just the plain text string
 }
 

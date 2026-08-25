@@ -19,7 +19,7 @@ bool Time::get_discovery_payload(sjson::Buffer& buffer) {
   return this->emit_with_base_config(buffer, builder);
 }
 
-bool Time::get_state_payload(sjson::Buffer& buffer) {
+size_t Time::get_state_payload(sjson::Buffer& buffer) {
   return sjson::Printer::printx(buffer, "%02d:%02d:%02d", hour(), minute(), second());
 }
 

@@ -28,7 +28,7 @@ class Time : public PersistentEntity<Time, TimeState> {
   uint8_t second() const { return state().second_; }
 
   bool get_discovery_payload(sjson::Buffer& buffer) override;
-  bool get_state_payload(sjson::Buffer& buffer) override;
+  size_t get_state_payload(sjson::Buffer& buffer) override;
   void handle_command(std::string_view payload) override;
   void on_change() override {
     if (config_.on_update) config_.on_update(on_update_ctx, *this);

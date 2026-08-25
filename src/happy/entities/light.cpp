@@ -22,7 +22,7 @@ bool Light::get_discovery_payload(sjson::Buffer& buffer) {
   return this->emit_with_base_config(buffer, builder);
 }
 
-bool Light::get_state_payload(sjson::Buffer& buffer) {
+size_t Light::get_state_payload(sjson::Buffer& buffer) {
   auto color = path("color");
   auto doc = stack_json(node("state", state().is_on ? "ON" : "OFF"),  //
                         node("brightness", state().brightness),       //

@@ -4,6 +4,10 @@
 
 namespace HAPPY::Entities {
 
+size_t Button::get_state_payload(sjson::Buffer& buffer) {
+  return sjson::Printer::print_utctime(buffer, last_press_time_);
+}
+
 bool Button::get_discovery_payload(sjson::Buffer& buffer) {
   sjson::StackBuilder<32> builder;  // Max 32 entries.
   topic_buf_t command_topic;
@@ -21,6 +25,7 @@ bool Button::get_discovery_payload(sjson::Buffer& buffer) {
 void Button::handle_command(std::string_view payload) {
   if (payload == "PRESS" && config_.on_press) {
     config_.on_press(ctx_, *this);
+    time(&last_press_time_);
   }
 }
 

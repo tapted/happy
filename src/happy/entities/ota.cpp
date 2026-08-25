@@ -132,12 +132,14 @@ OtaController::OtaController(Device& device, const char* base_version)
                                   .get_value = trampoline<&OtaController::get_current_version>(),
                               },
                               this),
-      base_version_sensor_(
-          device, "base_version", "Compiled Base Version",
-          {
-              .icon = "mdi:tag-outline",
-              .get_value = [](void*) -> std::string { return esp_app_get_description()->version; },
-          }) {
+      base_version_sensor_(device, "base_version", "Compiled Base Version",
+                           {
+                               .icon = "mdi:tag-outline",
+                               .get_value =
+                                   [](void*, sjson::Buffer& buffer) {
+                                     return buffer.write(esp_app_get_description()->version);
+                                   },
+                           }) {
   // Load the dynamically installed version from NVS if it exists.
   auto store = NvsStore::open(NAMESPACE, NVS_READONLY);
   if (store) {

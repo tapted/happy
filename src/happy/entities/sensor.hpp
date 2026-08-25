@@ -1,7 +1,6 @@
 #pragma once
 
-#include <string>
-
+#include "espbase/stack_json/buffer.hpp"
 #include "happy/entity.hpp"
 
 namespace HAPPY::Entities {
@@ -16,8 +15,8 @@ class Sensor : public Entity {
     // TODO: Add a "state_class" field for sensors that have a state class.
 
     // The lambda that fetches the real-time value
-    std::string (*get_value)(void*) = nullptr;
-    void (*on_state_publish)(Sensor&, const std::string&) = nullptr;
+    size_t (*get_value)(void*, sjson::Buffer&) = nullptr;
+    void (*on_state_publish)(Sensor&, std::string_view) = nullptr;
   };
 
   Sensor(Device& device, const char* object_id, const char* name, Config config,
@@ -30,7 +29,7 @@ class Sensor : public Entity {
   bool get_discovery_payload(sjson::Buffer& buffer) override;
 
   // Evaluates the lambda to get the current ESP32 state
-  bool get_state_payload(sjson::Buffer& buffer) override;
+  size_t get_state_payload(sjson::Buffer& buffer) override;
 
  private:
   // We copy config_. We could store a const reference (and delete the Sensor constructor that would

@@ -2,13 +2,15 @@
 
 #include <cmath>
 
+#include "espbase/stack_json/buffer.hpp"
+#include "espbase/stack_json/printer.hpp"
+
 namespace HAPPY::Entities {
 
-std::string format_tenths(const int16_t& val) {
-  char buf[16];
+size_t format_tenths(sjson::Buffer& buffer, const int16_t& val) {
   int abs_val = std::abs(val);
-  snprintf(buf, sizeof(buf), "%s%d.%d", (val < 0) ? "-" : "", abs_val / 10, abs_val % 10);
-  return std::string(buf);
+  return sjson::Printer::printx(buffer, "%s%d.%d", (val < 0) ? "-" : "", abs_val / 10,
+                                abs_val % 10);
 }
 
 void LazySensor::refresh_and_maybe_publish() {

@@ -19,11 +19,13 @@ class Button : public Entity {
         config_(std::move(config)),
         ctx_(ctx) {}
 
+  size_t get_state_payload(sjson::Buffer& buffer) override;
   bool get_discovery_payload(sjson::Buffer& buffer) override;
   void handle_command(std::string_view payload) override;
 
  private:
   Config config_;
+  time_t last_press_time_ = 0;
   void* ctx_ = nullptr;
 };
 

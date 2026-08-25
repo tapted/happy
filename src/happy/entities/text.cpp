@@ -19,7 +19,7 @@ bool Text::get_discovery_payload(sjson::Buffer& buffer) {
   return this->emit_with_base_config(buffer, builder);
 }
 
-bool Text::get_state_payload(sjson::Buffer& buffer) {
+size_t Text::get_state_payload(sjson::Buffer& buffer) {
   return buffer.write(state().value);
 }
 

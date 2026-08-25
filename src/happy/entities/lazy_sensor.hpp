@@ -1,15 +1,16 @@
 #pragma once
 
-#include <string>
 #include <type_traits>
 
 #include "espbase/main_loop.hpp"
+#include "espbase/stack_json/buffer.hpp"
+#include "espbase/stack_json/printer.hpp"
 #include "happy/entities/sensor.hpp"
 
 namespace HAPPY::Entities {
 
 // A reusable, allocation-free formatter for tenths-of-a-degree integers
-std::string format_tenths(const int16_t& val);
+size_t format_tenths(sjson::Buffer& buffer, const int16_t& val);
 
 // The core interface for hardware polling
 class SensorReader {
@@ -50,9 +51,13 @@ class AbstractSensorState {
   }
 
   // Returns the string payload and internally updates the last_published_value marker
-  std::string get_payload_for_publish() {
+  size_t get_payload_for_publish(sjson::Buffer& buffer) {
     has_published_after_refresh_ = has_published_after_refresh_ || !needs_successful_refresh_;
-    return needs_successful_refresh_ ? "unknown" : get_payload_after_refresh();
+    if (needs_successful_refresh_) {
+      return buffer.write("unknown");
+    } else {
+      return get_payload_after_refresh(buffer);
+    }
   }
 
  protected:
@@ -60,7 +65,7 @@ class AbstractSensorState {
   virtual bool value_changed() = 0;
 
   // Returns the string payload after a refresh() has been called. Updates the last_published_value
-  virtual std::string get_payload_after_refresh() = 0;
+  virtual size_t get_payload_after_refresh(sjson::Buffer& buffer) = 0;
 
   SensorReader& reader_;
   bool needs_successful_refresh_ = true;
@@ -71,7 +76,7 @@ template <typename T>
 class SensorState : public AbstractSensorState {
  public:
   using fetch_t = T (*)();
-  using formatter_t = std::string (*)(const T&);
+  using formatter_t = size_t (*)(sjson::Buffer& buffer, const T&);
 
   // Version that takes a SensorReader to coordinate with hardware that can't always return a
   // valid value, or uses internal caching to avoid excessive hardware reads.
@@ -100,21 +105,14 @@ class SensorState : public AbstractSensorState {
     }
   }
 
-  std::string get_payload_after_refresh() override {
+  size_t get_payload_after_refresh(sjson::Buffer& buffer) override {
     T current_val = get_current_value();
     last_published_value_ = current_val;
 
-    if (formatter_) return formatter_(current_val);
-
-    if constexpr (std::is_same_v<T, std::string>) {
-      return current_val;
-    } else if constexpr (std::is_floating_point_v<T>) {
-      char buf[32];
-      snprintf(buf, sizeof(buf), "%.4f", current_val);
-      return std::string(buf);
-    } else {
-      return std::to_string(current_val);
+    if (formatter_) {
+      return formatter_(buffer, current_val);
     }
+    return sjson::Printer::printt(buffer, current_val);
   }
 };
 

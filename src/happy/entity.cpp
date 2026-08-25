@@ -40,8 +40,8 @@ void Entity::get_discovery_topic(topic_buf_t& buf) const {
   snprintf(buf, sizeof(buf), "homeassistant/%s/%s/config", domain_, topic_prefix);
 }
 
-bool Entity::get_state_payload(sjson::Buffer& /*buffer*/) {
-  return true;  // Not an error - just an empty string.
+size_t Entity::get_state_payload(sjson::Buffer& buffer) {
+  return buffer.write("OK");
 }
 
 void Entity::print_state_topic(sjson::Printer& print) const {

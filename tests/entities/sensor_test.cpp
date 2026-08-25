@@ -1,8 +1,8 @@
 #include "happy/entities/sensor.hpp"
 
+#include <ArduinoJson.h>
 #include <gtest/gtest.h>
 
-#include <ArduinoJson.h>
 #include "espbase/stack_json/buffer.hpp"
 #include "espbase/stack_json/pretty_buffer.hpp"
 #include "happy_test_harness.hpp"
@@ -12,6 +12,9 @@ namespace HAPPY::Test {
 class SensorEntityTest : public HappyIntegrationTestHarness {};
 
 static std::string current_val;  // Global variable to simulate sensor value
+static size_t get_current_value(void*, sjson::Buffer& buffer) {
+  return buffer.write(current_val);
+}
 
 TEST_F(SensorEntityTest, Payload) {
   current_val = "23.5";
@@ -21,7 +24,7 @@ TEST_F(SensorEntityTest, Payload) {
                                      .unit_of_measurement = "°C",
                                      .icon = "mdi:thermometer",
                                      .entity_category = "diagnostic",
-                                     .get_value = [](auto*) { return current_val; },
+                                     .get_value = get_current_value,
                                  });
 
   // connect_and_pump_until_idle();
@@ -29,9 +32,8 @@ TEST_F(SensorEntityTest, Payload) {
   sjson::StackBuffer<1024> buffer;
   sjson::PrettyBuffer pretty(buffer, 2);
   EXPECT_TRUE(sensor.get_discovery_payload(pretty));
-  EXPECT_STREQ(
-      buffer.c_str(),
-      R"({
+  EXPECT_STREQ(buffer.c_str(),
+               R"({
   "device_class": "temperature",
   "unit_of_measurement": "°C",
   "icon": "mdi:thermometer",
@@ -59,7 +61,7 @@ TEST_F(SensorEntityTest, DiscoveryAndInitialStatePublication) {
                                      .unit_of_measurement = "°C",
                                      .icon = "mdi:thermometer",
                                      .entity_category = "diagnostic",
-                                     .get_value = [](auto*) { return current_val; },
+                                     .get_value = get_current_value,
                                  });
 
   // Connect and drive the MQTT state machine until all packets are sent and ACKed
@@ -109,7 +111,7 @@ TEST_F(SensorEntityTest, StateUpdateOnRequestPublish) {
                                  {
                                      .device_class = "duration",
                                      .unit_of_measurement = "s",
-                                     .get_value = [](auto*) { return current_val; },
+                                     .get_value = get_current_value,
                                  });
 
   connect_and_pump_until_idle();

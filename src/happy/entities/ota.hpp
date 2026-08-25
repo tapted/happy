@@ -1,9 +1,10 @@
 #pragma once
 
 #include "espbase/esp_task.hpp"
+#include "espbase/stack_json/buffer.hpp"
 #include "happy/entities/button.hpp"
-#include "happy/entities/text.hpp"
 #include "happy/entities/sensor.hpp"
+#include "happy/entities/text.hpp"
 
 namespace HAPPY::Entities {
 
@@ -11,7 +12,7 @@ class OtaController {
  public:
   OtaController(Device& device, const char* base_version);
 
-  std::string get_current_version() const { return current_version_; }
+  size_t get_current_version(sjson::Buffer& buffer) const { return buffer.write(current_version_); }
 
  private:
   void ota_trigger(const Button&);

@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <cstring>
-#include <string>
 #include <string_view>
 
 #include "happy/core/intrusive_list.hpp"
@@ -15,11 +14,6 @@ class Printer;
 
 namespace HAPPY {
 class Device;
-
-template <size_t N>
-std::string buf2str(const char (&buf)[N]) {
-  return std::string(buf, strnlen(buf, N));
-}
 
 using topic_buf_t = char[128];
 
@@ -63,7 +57,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
 
   virtual void load() {}
   virtual bool get_discovery_payload(sjson::Buffer& buffer) = 0;
-  virtual bool get_state_payload(sjson::Buffer& buffer);
+  virtual size_t get_state_payload(sjson::Buffer& buffer);
 
   // Default empty implementation. Sensors ignore this; Lights override it.
   virtual void handle_command(std::string_view /*payload*/) {}

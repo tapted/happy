@@ -13,6 +13,7 @@
 #include <time.h>
 
 #include "espbase/esp_result.hpp"
+#include "espbase/stack_json/buffer.hpp"
 
 extern size_t system_diagnostic_free_iram_at_boot;
 size_t system_diagnostic_free_iram_at_boot = 0;
@@ -41,7 +42,7 @@ static float get_temperature_celsius() {
   return 0.0f;
 }
 
-static std::string get_reset_reason_str(void*) {
+static const char* get_reset_reason() {
   switch (esp_reset_reason()) {
     case ESP_RST_UNKNOWN:
       return "ESP_RST_UNKNOWN";
@@ -80,6 +81,10 @@ static std::string get_reset_reason_str(void*) {
   }
 }
 
+static size_t get_reset_reason_str(void*, sjson::Buffer& buffer) {
+  return buffer.write(get_reset_reason());
+}
+
 static size_t get_firmware_size() {
   const esp_partition_t* running = esp_ota_get_running_partition();
   if (!running) return 0;
@@ -92,34 +97,27 @@ static size_t get_firmware_size() {
   return 0;
 }
 
-static std::string get_boot_time_iso(void*) {
+static size_t get_boot_time_iso(void*, sjson::Buffer& buffer) {
   static time_t boot_time = 0;
   if (boot_time == 0) {
     time_t now;
     time(&now);
 
     // If timestamp is before 2020, NTP hasn't synced yet
-    if (now < TIME_SYNCED_THRESHOLD) return "unknown";
+    if (now < TIME_SYNCED_THRESHOLD) return buffer.write("unknown");
 
     // Boot Time = Current UNIX Epoch - ESP32 Uptime Seconds
     int64_t uptime_sec = esp_timer_get_time() / 1000000ULL;
     boot_time = now - uptime_sec;
   }
-
-  struct tm timeinfo;
-  gmtime_r(&boot_time, &timeinfo);
-
-  // HA expects UTC for absolute timestamps (denoted by 'Z')
-  char buf[32];
-  strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
-  return std::string(buf);
+  return sjson::Printer::print_utctime(buffer, boot_time);
 }
 
-static std::string get_ip_address(void*) {
+static size_t get_ip_address(void*, sjson::Buffer& buffer) {
   // 1. Grab the default Wi-Fi Station network interface
   esp_netif_t* netif = esp_netif_get_handle_from_ifkey("WIFI_STA_DEF");
   if (!netif) {
-    return "Not Connected";
+    return buffer.write("Not Connected");
   }
 
   // 2. Request the IP configuration struct for this interface
@@ -128,10 +126,10 @@ static std::string get_ip_address(void*) {
     // 3. Convert the raw 32-bit IP into a human-readable string
     char ip_str[IP4ADDR_STRLEN_MAX];
     esp_ip4addr_ntoa(&ip_info.ip, ip_str, IP4ADDR_STRLEN_MAX);
-    return HAPPY::buf2str(ip_str);
+    return buffer.write(ip_str);
   }
 
-  return "0.0.0.0";
+  return buffer.write("0.0.0.0");
 }
 
 namespace HAPPY::Entities {
@@ -149,14 +147,11 @@ static constexpr Sensor::Config reboot_reason = {
 
 static constexpr Sensor::Config compile_date = {
     .icon = "mdi:wrench-clock",
-    .get_value =
-        [](void*) {
-          const esp_app_desc_t* desc = esp_app_get_description();
-          char buf[64];
-          snprintf(buf, sizeof(buf), "%.*s %.*s UTC", sizeof(desc->date), desc->date,
-                   sizeof(desc->time), desc->time);
-          return std::string(buf);
-        },
+    .get_value = [](void*, sjson::Buffer& buffer) -> size_t {
+      const esp_app_desc_t* desc = esp_app_get_description();
+      return sjson::Printer::printx(buffer, "%.*s %.*s UTC", sizeof(desc->date), desc->date,
+                                    sizeof(desc->time), desc->time);
+    },
 };
 
 static constexpr Sensor::Config ip_address = {
@@ -168,7 +163,10 @@ static constexpr Sensor::Config free_iram_at_boot = {
     .device_class = "data_size",
     .unit_of_measurement = "B",
     .icon = "mdi:memory-arrow-down",
-    .get_value = [](void*) { return std::to_string(system_diagnostic_free_iram_at_boot); },
+    .get_value =
+        [](void*, sjson::Buffer& buffer) {
+          return sjson::Printer::printt(buffer, system_diagnostic_free_iram_at_boot);
+        },
 };
 
 SystemDiagnostics::SystemDiagnostics(Device& device)

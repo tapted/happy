@@ -1,6 +1,7 @@
 #include "happy/entities/sensor.hpp"
 
 #include <esp_log.h>
+#include <stddef.h>
 
 #include "espbase/stack_json/json.hpp"
 
@@ -16,12 +17,12 @@ bool Sensor::get_discovery_payload(sjson::Buffer& buffer) {
   return this->emit_with_base_config(buffer, builder);
 }
 
-bool Sensor::get_state_payload(sjson::Buffer& buffer) {
-  std::string value = config_.get_value(user_ctx);
+size_t Sensor::get_state_payload(sjson::Buffer& buffer) {
+  size_t written = config_.get_value(user_ctx, buffer);
   if (config_.on_state_publish) {
-    config_.on_state_publish(*this, value);
+    config_.on_state_publish(*this, buffer.last_write(written));
   }
-  return buffer.write(value);
+  return written;
 }
 
 }  // namespace HAPPY::Entities
