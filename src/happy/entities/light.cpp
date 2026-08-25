@@ -23,12 +23,11 @@ bool Light::get_discovery_payload(sjson::Buffer& buffer) {
 }
 
 size_t Light::get_state_payload(sjson::Buffer& buffer) {
-  auto color = path("color");
-  auto doc = stack_json(node("state", state().is_on ? "ON" : "OFF"),  //
-                        node("brightness", state().brightness),       //
-                        node(color("r"), state().r),                  //
-                        node(color("g"), state().g),                  //
-                        node(color("b"), state().b)                   //
+  auto color = stack_json(node("r", state().r), node("g", state().g), node("b", state().b));
+  auto doc = stack_json(node("state", state().is_on ? "ON" : "OFF"),                      //
+                        node("color_mode", config_.supports_rgb ? "rgb" : "brightness"),  //
+                        node("brightness", state().brightness),                           //
+                        node_if(config_.supports_rgb, "color", color)                     //
   );
   return doc.emit(buffer);
 }
