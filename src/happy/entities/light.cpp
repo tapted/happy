@@ -16,7 +16,11 @@ bool Light::get_discovery_payload(sjson::Buffer& buffer) {
       node("command_topic", command_topic),  //
       node("optimistic", false),             //
       node_if("icon", config_.icon),         //
-      node("supported_color_modes", stack_array(config_.supports_rgb ? "rgb" : "brightness")));
+      node("brightness", true),              //  Light supports brightness with rgb
+      node("color_mode", true),              //
+      node("supported_color_modes", stack_array(config_.supports_rgb ? "rgb" : "brightness")),
+      node_if(!config_.effect_list.empty(), "effect", true),
+      node_if(!config_.effect_list.empty(), "effect_list", sjson::span_array(config_.effect_list)));
 
   builder.add(doc);
   return this->emit_with_base_config(buffer, builder);
@@ -36,8 +40,12 @@ void Light::handle_command(const std::string_view payload) {
   auto state = this->state();
   auto color = path("color");
   std::string_view is_on;
+  std::string_view effect;
+  std::string_view flash;
   auto parser = json_parser(bind("state", is_on),                  //
                             bind("brightness", state.brightness),  //
+                            bind("effect", effect),
+                            bind("flash", flash),
                             bind(color("r"), state.r),             //
                             bind(color("g"), state.g),             //
                             bind(color("b"), state.b));
@@ -49,6 +57,9 @@ void Light::handle_command(const std::string_view payload) {
   ESP_LOGD("Light", "New state: is_on=%d, brightness=%d, r=%d, g=%d, b=%d", state.is_on,
            state.brightness, state.r, state.g, state.b);
   set_state(state);
+
+  if (!effect.empty() && config_.on_effect) config_.on_effect(*this, effect);
+  if (!flash.empty() && config_.on_flash) config_.on_flash(*this, flash);
 }
 
 }  // namespace HAPPY::Entities

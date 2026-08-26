@@ -1,13 +1,14 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 
 #include "happy/entity.hpp"
 
 namespace HAPPY::Entities {
 
 struct RgbColor {
-  uint32_t r, g, b;
+  uint8_t r, g, b;
 };
 
 // The POD state that gets written to flash in a single atomic block
@@ -38,6 +39,12 @@ class Light : public PersistentEntity<Light, LightState> {
   struct Config {
     const char* icon = "mdi:led-strip-variant";
     bool supports_rgb = true;
+
+    // Span for discovery payload effect list
+    std::span<const char* const> effect_list = {};
+
+    void (*on_effect)(const Light&, std::string_view) = nullptr;
+    void (*on_flash)(const Light&, std::string_view) = nullptr;
     void (*on_update)(const Light&) = nullptr;
   };
 
@@ -53,10 +60,11 @@ class Light : public PersistentEntity<Light, LightState> {
   // Computes the final RGB output. If OFF, returns {0,0,0}.
   RgbColor scaled_rgb() const {
     if (!state().is_on) return {0, 0, 0};
+    uint32_t brightness = state().brightness;
     return {
-        static_cast<uint32_t>((state().r * state().brightness) / 255),
-        static_cast<uint32_t>((state().g * state().brightness) / 255),
-        static_cast<uint32_t>((state().b * state().brightness) / 255),
+        static_cast<uint8_t>((state().r * brightness) / 255),
+        static_cast<uint8_t>((state().g * brightness) / 255),
+        static_cast<uint8_t>((state().b * brightness) / 255),
     };
   }
   bool get_discovery_payload(sjson::Buffer& buffer) override;
