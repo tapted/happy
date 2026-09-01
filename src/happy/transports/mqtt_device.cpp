@@ -144,7 +144,7 @@ void MqttDevice::pump_queue() {
       if (msg_id >= 0) {
         entity.clear_flag(Entity::FLAG_SUBSCRIBE);
         pending_acks_.fetch_add(1, std::memory_order_relaxed);
-        ESP_LOGD(TAG, "Subscribed to topic: %s", topic);
+        ESP_LOGI(TAG, "Subscribed to topic: %s", topic);
       } else if (msg_id == -2) {
         ESP_LOGW(TAG, "Outbox full. Failed to subscribe to topic: %s", topic);
       } else if (msg_id == -1) {
