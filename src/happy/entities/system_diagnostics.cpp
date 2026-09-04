@@ -134,6 +134,8 @@ static size_t get_ip_address(void*, sjson::Buffer& buffer) {
 
 namespace HAPPY::Entities {
 
+void (*on_core_temperature_change)(Sensor& sensor, std::string_view value) = nullptr;
+
 static constexpr Sensor::Config boot_time = {
     .device_class = "timestamp",
     .icon = "mdi:clock-start",
@@ -202,10 +204,19 @@ SystemDiagnostics::SystemDiagnostics(Device& device)
 
       ip_address_(device, "ip_address", "IP Address", ip_address),
 
-      temperature_(
-          device, "temperature", "Temperature",
-          {.device_class = "temperature", .unit_of_measurement = "°C", .icon = "mdi:thermometer"},
-          get_temperature_celsius) {
+      temperature_(device, "temperature", "Temperature",
+                   {
+                       .device_class = "temperature",  //
+                       .unit_of_measurement = "°C",    //
+                       .icon = "mdi:thermometer",
+                       .on_state_publish =
+                           [](auto& sensor, std::string_view value) {
+                             if (on_core_temperature_change) {
+                               on_core_temperature_change(sensor, value);
+                             }
+                           },
+                   },
+                   get_temperature_celsius) {
 }
 
 void SystemDiagnostics::publish_all_mutable(bool is_time_sync) {

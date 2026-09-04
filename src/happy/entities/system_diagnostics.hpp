@@ -4,6 +4,8 @@
 
 namespace HAPPY::Entities {
 
+extern void (*on_core_temperature_change)(Sensor& sensor, std::string_view value);
+
 class SystemDiagnostics {
  public:
   explicit SystemDiagnostics(Device& device);
