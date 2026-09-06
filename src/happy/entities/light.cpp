@@ -11,14 +11,17 @@ bool Light::get_discovery_payload(sjson::Buffer& buffer) {
   topic_buf_t command_topic;
   get_command_topic(command_topic);
 
+  bool has_modes = config_.supports_rgb || config_.supports_brightness;
+
   auto doc = stack_json(
-      node("schema", "json"),                //
-      node("command_topic", command_topic),  //
-      node("optimistic", false),             //
-      node_if("icon", config_.icon),         //
-      node("brightness", true),              //  Light supports brightness with rgb
-      node("color_mode", true),              //
-      node("supported_color_modes", stack_array(config_.supports_rgb ? "rgb" : "brightness")),
+      node("schema", "json"),                                    //
+      node("command_topic", command_topic),                      //
+      node("optimistic", false),                                 //
+      node_if("icon", config_.icon),                             //
+      node_if(config_.supports_brightness, "brightness", true),  //  Supports brightness with rgb
+      node_if(has_modes, "color_mode", true),                    //
+      node_if(has_modes, "supported_color_modes",
+              stack_array(config_.supports_rgb ? "rgb" : "brightness")),
       node_if(!config_.effect_list.empty(), "effect", true),
       node_if(!config_.effect_list.empty(), "effect_list", sjson::span_array(config_.effect_list)));
 
@@ -28,11 +31,13 @@ bool Light::get_discovery_payload(sjson::Buffer& buffer) {
 
 size_t Light::get_state_payload(sjson::Buffer& buffer) {
   auto color = stack_json(node("r", state().r), node("g", state().g), node("b", state().b));
-  auto doc = stack_json(node("state", state().is_on ? "ON" : "OFF"),                      //
-                        node("color_mode", config_.supports_rgb ? "rgb" : "brightness"),  //
-                        node("brightness", state().brightness),                           //
-                        node_if(config_.supports_rgb, "color", color)                     //
-  );
+  bool has_modes = config_.supports_rgb || config_.supports_brightness;
+  auto doc =
+      stack_json(node("state", state().is_on ? "ON" : "OFF"),                                    //
+                 node_if(has_modes, "color_mode", config_.supports_rgb ? "rgb" : "brightness"),  //
+                 node_if(config_.supports_brightness, "brightness", state().brightness),         //
+                 node_if(config_.supports_rgb, "color", color)                                   //
+      );
   return doc.emit(buffer);
 }
 
@@ -42,13 +47,12 @@ void Light::handle_command(const std::string_view payload) {
   std::string_view is_on;
   std::string_view effect;
   std::string_view flash;
-  auto parser = json_parser(bind("state", is_on),                  //
-                            bind("brightness", state.brightness),  //
-                            bind("effect", effect),
-                            bind("flash", flash),
-                            bind(color("r"), state.r),             //
-                            bind(color("g"), state.g),             //
-                            bind(color("b"), state.b));
+  auto parser =
+      json_parser(bind("state", is_on),                                                     //
+                  bind("brightness", state.brightness),                                     //
+                  bind("effect", effect), bind("flash", flash), bind(color("r"), state.r),  //
+                  bind(color("g"), state.g),                                                //
+                  bind(color("b"), state.b));
   parser.parse(payload);
   state.is_on = (is_on == "ON");
 

@@ -39,6 +39,7 @@ class Light : public PersistentEntity<Light, LightState> {
   struct Config {
     const char* icon = "mdi:led-strip-variant";
     bool supports_rgb = true;
+    bool supports_brightness = true;
 
     // Span for discovery payload effect list
     std::span<const char* const> effect_list = {};
