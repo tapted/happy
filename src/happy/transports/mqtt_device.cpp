@@ -160,7 +160,7 @@ void MqttDevice::pump_queue() {
       int retain = entity.get_state_retain();
 
       if (!entity.get_state_payload(buffer)) {
-        if (buffer.length() > 0) {
+        if (buffer.bad()) {
           ESP_LOGW(TAG, "Failed to get state payload for topic: %s (too big?)", topic);
           buffer.reset();  // Clear the buffer so we don't send garbage.
         }
