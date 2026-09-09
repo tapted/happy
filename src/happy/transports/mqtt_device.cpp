@@ -15,6 +15,8 @@
 
 namespace HAPPY::Transports {
 
+const char* const MqttDevice::kStatusIdentifier = "status";
+
 static constexpr char TAG[] = "MqttDevice";
 
 MqttDevice::~MqttDevice() {
@@ -27,8 +29,20 @@ MqttDevice::~MqttDevice() {
 EspResult<void> MqttDevice::begin(const esp_mqtt_client_config_t& mqtt_cfg) {
   // 1. Run the two-phase initialization to allocate topics safely
   Device::begin();
+  
+  esp_mqtt_client_config_t config_with_lwt = mqtt_cfg;
+  // Set a default last will topic if none is provided
+  if (config_with_lwt.session.last_will.topic == nullptr) {
+    topic_buf_t lwt_topic_buf{};
+    get_topic_prefix(lwt_topic_buf, MqttDevice::kStatusIdentifier);
+    config_with_lwt.session.last_will.topic = lwt_topic_buf;
+    config_with_lwt.session.last_will.msg = "offline";
+    config_with_lwt.session.last_will.msg_len = 7;
+    config_with_lwt.session.last_will.qos = 1;
+    config_with_lwt.session.last_will.retain = 1;  // Crucial for HA restarts
+  }
 
-  client_ = esp_mqtt_client_init(&mqtt_cfg);
+  client_ = esp_mqtt_client_init(&config_with_lwt);
   if (!client_) {
     ESP_LOGE(TAG, "Failed to initialize MQTT client");
     return ESP_ERR_NO_MEM;
