@@ -43,8 +43,10 @@ template <size_t MaxLen = TextBase::kDefaultBufferSize>
 class TextT : public TextBase {
  public:
   TextT(Device& device, const char* object_id, const char* name, TextBase::Config config,
-        void* ctx = nullptr)
-      : TextBase(device, object_id, name, config, storage_, ctx) {}
+        const char* default_val = "", void* ctx = nullptr)
+      : TextBase(device, object_id, name, config, storage_, ctx) {
+    snprintf(storage_, MaxLen, "%s", default_val);  // Seed the storage. No NVS writes.
+  }
 
  private:
   char storage_[MaxLen]{};

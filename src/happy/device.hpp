@@ -27,6 +27,8 @@ class Entity;  // Forward declaration
 // ```
 class Device {
  public:
+  static const char* const kStatusIdentifier;
+
   struct Config {
     const char* identifiers;
     const char* name;

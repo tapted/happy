@@ -11,11 +11,13 @@ class StaticStatus : public Entity {
     const char* entity_category = "diagnostic";
   };
 
-  StaticStatus(Device& device, const char* object_id, const char* name, 
-               const char* initial_state, Config config)
+  StaticStatus(Device& device, const char* object_id, const char* name, const char* initial_state,
+               Config config)
       : Entity(device, "sensor", object_id, name, false /* expects_commands */),
         config_(std::move(config)),
-        current_state_(initial_state) {}
+        current_state_(initial_state) {
+    set_flag(RETAIN_STATE);  // TODO: Move this into some kind of Entity::Settings struct.
+  }
 
   // Update the state using a string literal pointer
   void set_state(const char* new_state);
@@ -27,6 +29,11 @@ class StaticStatus : public Entity {
  private:
   Config config_;
   const char* current_state_;
+};
+
+class LastWillStatus : public StaticStatus {
+ public:
+  explicit LastWillStatus(Device& device);
 };
 
 }  // namespace HAPPY::Entities

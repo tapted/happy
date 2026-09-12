@@ -1,6 +1,7 @@
 #pragma once
 
 #include "happy/entities/button.hpp"
+#include "happy/entities/day_mask.hpp"
 #include "happy/entities/select.hpp"
 #include "happy/entities/time.hpp"
 
@@ -50,19 +51,23 @@ class AlarmController {
 
   std::string_view selected_tone() const { return tone_.get_selected(); }
   const Time& time() const { return time_; }
+  const DayMask& day_mask() const { return day_mask_; }
 
  private:
   void on_tone_update(const Select&) { on_update_(*this); }
   void on_time_update(const Time&) { on_update_(*this); }
+  void on_day_mask_update(const TextBase&) { on_update_(*this); }
 
   OnAlarmUpdateCallback on_update_;
   OnAlarmUpdateCallback on_test_;
 
   IdBuf time_id_, time_name_;
+  IdBuf day_mask_id_, day_mask_name_;
   IdBuf tone_id_, tone_name_;
   IdBuf test_id_, test_name_;
 
   Time time_;
+  DayMask day_mask_;
   Select tone_;
   Button test_btn_;
 

@@ -22,6 +22,8 @@ AlarmController::AlarmController(Device& device, uint8_t alarm_id,
       // We dynamically construct the IDs like "alarm_1_time"
       time_id_("alarm", id, "time"),
       time_name_("Alarm", id, "Time", ' '),
+      day_mask_id_("alarm", id, "day_mas"),
+      day_mask_name_("Alarm", id, "Days", ' '),
       tone_id_("alarm", id, "tone"),
       tone_name_("Alarm", id, "Tone", ' '),
       test_id_("alarm", id, "test"),
@@ -33,6 +35,13 @@ AlarmController::AlarmController(Device& device, uint8_t alarm_id,
                 .on_update = trampoline<&AlarmController::on_time_update>(),
             },
             this),
+
+      day_mask_(device, day_mask_id_, day_mask_name_,
+                {
+                    .entity_category = nullptr,
+                    .on_update = trampoline<&AlarmController::on_day_mask_update>(),
+                },
+                this),
 
       tone_(device, tone_id_, tone_name_,
             {

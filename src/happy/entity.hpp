@@ -89,9 +89,10 @@ class PersistentEntity : public Entity {
   void load() override {
     static_assert(std::is_trivially_copyable_v<StateStruct>,
                   "PersistentEntity StateStruct must be a trivially copyable POD type.");
-    if (this->load_nvs_blob(&state_, sizeof(StateStruct))) {
-      this->on_change();
-    }
+
+    // If it exists, this overwrites state_. If not, state_ retains its constructor defaults.
+    this->load_nvs_blob(&state_, sizeof(StateStruct));
+    this->on_change();  // Unconditionally fire to broadcast initial state
   }
   virtual void on_change() = 0;
 

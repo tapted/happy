@@ -15,8 +15,6 @@
 
 namespace HAPPY::Transports {
 
-const char* const MqttDevice::kStatusIdentifier = "status";
-
 static constexpr char TAG[] = "MqttDevice";
 
 MqttDevice::~MqttDevice() {

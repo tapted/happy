@@ -15,8 +15,6 @@ namespace HAPPY::Transports {
 
 class MqttDevice : public Device {
  public:
-  static const char* const kStatusIdentifier;
-
   // Inherit the Device constructor
   using Device::Device;
   virtual ~MqttDevice();

@@ -21,6 +21,8 @@ esp_app_desc_t* esp_app_get_description() {
 
 namespace HAPPY {
 
+const char* const Device::kStatusIdentifier = "status";
+
 const char* Device::get_mac_chars(char (&buf)[16]) const {
   const MacAddress& m = MacAddress::mine();
   std::snprintf(buf, sizeof(buf), "%02X%02X%02X%02X%02X%02X", m[0], m[1], m[2], m[3], m[4], m[5]);
@@ -102,6 +104,8 @@ void Device::dispatch_command(std::string_view topic, std::string_view payload) 
     entity.get_command_topic(command_topic);
     if (std::string_view(command_topic) == topic) {
       entity.handle_command(payload);
+      // Assume the command sender expects a state update, even if nothing changes.
+      entity.request_publish();
       return;  // Stop searching once routed
     }
   }

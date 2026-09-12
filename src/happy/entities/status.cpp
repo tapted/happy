@@ -1,6 +1,7 @@
 #include "happy/entities/status.hpp"
 
 #include "espbase/stack_json/json.hpp"
+#include "happy/device.hpp"
 
 namespace HAPPY::Entities {
 
@@ -24,4 +25,8 @@ bool StaticStatus::get_discovery_payload(sjson::Buffer& buffer) {
   return this->emit_with_base_config(buffer, builder);
 }
 
+LastWillStatus::LastWillStatus(Device& device)
+    : StaticStatus(device, HAPPY::Device::kStatusIdentifier, "Device Status", "online",
+                   {.icon = "mdi:check-network"}) {
+}
 }  // namespace HAPPY::Entities

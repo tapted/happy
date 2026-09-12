@@ -49,9 +49,9 @@ void TextBase::set_value(std::string_view new_value) {
 }
 
 void TextBase::load() {
-  if (this->load_nvs_blob(buffer_.data(), buffer_.size())) {
-    this->on_change();
-  }
+  // Mirrors PersistentEntity::load(), but here to avoid template bloat.
+  this->load_nvs_blob(buffer_.data(), buffer_.size());
+  this->on_change();
 }
 
 void TextBase::on_change() {
