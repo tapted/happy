@@ -17,11 +17,7 @@ class Switch : public PersistentEntity<Switch, SwitchState> {
     void (*on_change)(void*, const Switch&) = nullptr;
   };
 
-  Switch(Device& device, const char* object_id, const char* name, Config config,
-         void* ctx = nullptr)
-      : PersistentEntity(device, "switch", object_id, name, true /* expects_commands */),
-        config_(std::move(config)),
-        ctx_(ctx) {}
+  Switch(Device& device, const char* id, const char* name, Config config, void* ctx = nullptr);
 
   size_t get_state_payload(sjson::Buffer& buffer) override;
   bool get_discovery_payload(sjson::Buffer& buffer) override;

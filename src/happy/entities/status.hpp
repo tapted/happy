@@ -12,12 +12,7 @@ class StaticStatus : public Entity {
   };
 
   StaticStatus(Device& device, const char* object_id, const char* name, const char* initial_state,
-               Config config)
-      : Entity(device, "sensor", object_id, name, false /* expects_commands */),
-        config_(std::move(config)),
-        current_state_(initial_state) {
-    set_flag(RETAIN_STATE);  // TODO: Move this into some kind of Entity::Settings struct.
-  }
+               Config config);
 
   // Update the state using a string literal pointer
   void set_state(const char* new_state);

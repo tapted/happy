@@ -49,9 +49,7 @@ class Light : public PersistentEntity<Light, LightState> {
     void (*on_update)(const Light&) = nullptr;
   };
 
-  Light(Device& device, const char* object_id, const char* name, Config config)
-      : PersistentEntity<Light, LightState>(device, "light", object_id, name, true),
-        config_(std::move(config)) {}
+  Light(Device& device, const char* object_id, const char* name, Config config);
 
   // --- State Accessors ---
   bool is_on() const { return state().is_on; }

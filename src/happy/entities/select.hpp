@@ -20,17 +20,13 @@ class Select : public PersistentEntity<Select, SelectState> {
     void (*on_update)(void*, const Select&) = nullptr;
   };
 
-  Select(Device& device, const char* object_id, const char* name, Config config,
-         void* on_update_ctx = nullptr)
-      : PersistentEntity(device, "select", object_id, name, true /* expects_commands */),
-        config_(std::move(config)),
-        on_update_ctx(on_update_ctx) {}
+  Select(Device& device, const char* id, const char* name, Config config, void* ctx = nullptr);
 
   bool empty() const { return config_.options.empty(); }
   std::string_view get_selected() const {
     return empty() ? "" : config_.options[state().selected_option_index_];
   }
-  
+
   bool get_discovery_payload(sjson::Buffer& buffer) override;
   size_t get_state_payload(sjson::Buffer& buffer) override;
   void handle_command(std::string_view payload) override;

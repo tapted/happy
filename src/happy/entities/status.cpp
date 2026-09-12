@@ -5,6 +5,20 @@
 
 namespace HAPPY::Entities {
 
+StaticStatus::StaticStatus(Device& device, const char* object_id, const char* name,
+                           const char* initial_state, Config config)
+    : Entity(device,
+             {
+                 .domain = "sensor",
+                 .object_id = object_id,
+                 .name = name,
+                 .retain_state = true,
+                 .expects_commands = false,
+             }),
+      config_(std::move(config)),
+      current_state_(initial_state) {
+}
+
 void StaticStatus::set_state(const char* new_state) {
   current_state_ = new_state;
   request_publish();

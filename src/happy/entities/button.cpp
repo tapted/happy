@@ -4,6 +4,19 @@
 
 namespace HAPPY::Entities {
 
+Button::Button(Device& device, const char* object_id, const char* name, Config config, void* ctx)
+    : Entity(device,
+             {
+                 .domain = "button",
+                 .object_id = object_id,
+                 .name = name,
+                 .retain_state = false,
+                 .expects_commands = true,
+             }),
+      config_(std::move(config)),
+      ctx_(ctx) {
+}
+
 size_t Button::get_state_payload(sjson::Buffer& buffer) {
   return sjson::Printer::print_utctime(buffer, last_press_time_);
 }

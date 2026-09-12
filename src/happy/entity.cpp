@@ -8,12 +8,11 @@
 
 namespace HAPPY {
 
-Entity::Entity(Device& device, const char* domain, const char* object_id, const char* name,
-               bool expects_commands)
-    : device_(device), domain_(domain), object_id_(object_id), name_(name) {
-  if (expects_commands) {
-    flags_.fetch_or(EXPECTS_COMMANDS, std::memory_order_relaxed);
-  }
+Entity::Entity(Device& device, const EntityConfig& c)
+    : device_(device), domain_(c.domain), object_id_(c.object_id), name_(c.name) {
+  if (c.expects_commands) flags_.fetch_or(EXPECTS_COMMANDS, std::memory_order_relaxed);
+  if (c.retain_state) flags_.fetch_or(RETAIN_STATE, std::memory_order_relaxed);
+
   // Register the entity with the device upon construction. This means the constructors can't be
   // constexpr/constinit. But the registration structs do not require a heap allocation, so this
   // is still safe for static initialization.

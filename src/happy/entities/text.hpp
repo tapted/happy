@@ -17,11 +17,7 @@ class TextBase : public Entity {
   };
 
   TextBase(Device& device, const char* object_id, const char* name, Config config,
-           std::span<char> buffer, void* ctx = nullptr)
-      : Entity(device, "text", object_id, name, true /* expects_commands */),
-        config_(config),
-        buffer_(buffer),
-        ctx_(ctx) {}
+           std::span<char> buffer, void* ctx = nullptr);
 
   void set_value(std::string_view new_value);
   std::string_view get_value() const { return std::string_view(buffer_.data()); }

@@ -7,6 +7,20 @@
 
 namespace HAPPY::Entities {
 
+Sensor::Sensor(Device& device, const char* object_id, const char* name, Config config,
+               void* user_ctx)
+    : Entity(device,
+             {
+                 .domain = "sensor",
+                 .object_id = object_id,
+                 .name = name,
+                 .retain_state = true,  // This probably should depend on the sensor.
+                 .expects_commands = false,
+             }),
+      config_(std::move(config)),
+      user_ctx(user_ctx) {
+}
+
 bool Sensor::get_discovery_payload(sjson::Buffer& buffer) {
   sjson::StackBuilder<32> builder;                                      // Max 32 entries.
   auto doc = stack_json(node_if("device_class", config_.device_class),  //

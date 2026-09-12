@@ -9,6 +9,21 @@ namespace HAPPY::Entities {
 
 template class TextT<TextBase::kDefaultBufferSize>;
 
+TextBase::TextBase(Device& device, const char* object_id, const char* name, Config config,
+                   std::span<char> buffer, void* ctx)
+    : Entity(device,
+             {
+                 .domain = "text",
+                 .object_id = object_id,
+                 .name = name,
+                 .retain_state = true,
+                 .expects_commands = true,
+             }),
+      config_(config),
+      buffer_(buffer),
+      ctx_(ctx) {
+}
+
 bool TextBase::get_discovery_payload(sjson::Buffer& buffer) {
   sjson::StackBuilder<32> builder;  // Max 32 entries.
   topic_buf_t command_topic;

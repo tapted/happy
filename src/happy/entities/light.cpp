@@ -6,6 +6,18 @@
 
 namespace HAPPY::Entities {
 
+Light::Light(Device& device, const char* object_id, const char* name, Config config)
+    : PersistentEntity<Light, LightState>(device,
+                                          {
+                                              .domain = "light",
+                                              .object_id = object_id,
+                                              .name = name,
+                                              .retain_state = true,
+                                              .expects_commands = true,
+                                          }),
+      config_(std::move(config)) {
+}
+
 bool Light::get_discovery_payload(sjson::Buffer& buffer) {
   sjson::StackBuilder<32> builder;  // Max 32 entries.
   topic_buf_t command_topic;

@@ -7,6 +7,20 @@
 
 namespace HAPPY::Entities {
 
+Time::Time(Device& device, const char* object_id, const char* name, Config config,
+           void* on_update_ctx)
+    : PersistentEntity(device,
+                       {
+                           .domain = "time",
+                           .object_id = object_id,
+                           .name = name,
+                           .retain_state = true,
+                           .expects_commands = true,
+                       }),
+      config_(std::move(config)),
+      on_update_ctx(on_update_ctx) {
+}
+
 bool Time::get_discovery_payload(sjson::Buffer& buffer) {
   sjson::StackBuilder<32> builder;  // Max 32 entries.
   topic_buf_t command_topic;

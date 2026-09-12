@@ -17,11 +17,7 @@ class Time : public PersistentEntity<Time, TimeState> {
     void (*on_update)(void*, const Time&) = nullptr;
   };
 
-  Time(Device& device, const char* object_id, const char* name, Config config,
-       void* on_update_ctx = nullptr)
-      : PersistentEntity(device, "time", object_id, name, true /* expects_commands */),
-        config_(std::move(config)),
-        on_update_ctx(on_update_ctx) {}
+  Time(Device& device, const char* id, const char* name, Config config, void* ctx = nullptr);
 
   uint8_t hour() const { return state().hour_; }
   uint8_t minute() const { return state().minute_; }

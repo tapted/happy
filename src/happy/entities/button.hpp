@@ -13,11 +13,7 @@ class Button : public Entity {
     void (*on_press)(void*, const Button&) = nullptr;
   };
 
-  Button(Device& device, const char* object_id, const char* name, Config config,
-         void* ctx = nullptr)
-      : Entity(device, "button", object_id, name, true /* expects_commands */),
-        config_(std::move(config)),
-        ctx_(ctx) {}
+  Button(Device& device, const char* id, const char* name, Config config, void* ctx = nullptr);
 
   size_t get_state_payload(sjson::Buffer& buffer) override;
   bool get_discovery_payload(sjson::Buffer& buffer) override;

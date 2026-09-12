@@ -8,6 +8,19 @@
 
 namespace HAPPY::Entities {
 
+Select::Select(Device& device, const char* id, const char* name, Config config, void* ctx)
+    : PersistentEntity(device,
+                       {
+                           .domain = "select",
+                           .object_id = id,
+                           .name = name,
+                           .retain_state = true,
+                           .expects_commands = true,
+                       }),
+      config_(std::move(config)),
+      on_update_ctx(ctx) {
+}
+
 bool Select::get_discovery_payload(sjson::Buffer& buffer) {
   sjson::StackBuilder<32> builder;  // Max 32 entries.
   topic_buf_t command_topic;
@@ -45,4 +58,5 @@ void Select::on_change() {
 
   if (config_.on_update) config_.on_update(on_update_ctx, *this);
 }
+
 }  // namespace HAPPY::Entities

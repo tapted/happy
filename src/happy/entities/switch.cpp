@@ -4,6 +4,19 @@
 
 namespace HAPPY::Entities {
 
+Switch::Switch(Device& device, const char* object_id, const char* name, Config config, void* ctx)
+    : PersistentEntity(device,
+                       {
+                           .domain = "switch",
+                           .object_id = object_id,
+                           .name = name,
+                           .retain_state = true,
+                           .expects_commands = true,
+                       }),
+      config_(std::move(config)),
+      ctx_(ctx) {
+}
+
 size_t Switch::get_state_payload(sjson::Buffer& buffer) {
   // Home Assistant expects standard "ON" and "OFF" strings for switch states
   return buffer.write(state().is_on ? "ON" : "OFF");

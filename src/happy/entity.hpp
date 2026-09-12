@@ -17,6 +17,19 @@ class Device;
 
 using topic_buf_t = char[128];
 
+struct EntityConfig {
+  const char* domain;
+  const char* object_id;
+  const char* name;
+
+  // Asks the broker to send the last known state to new subscribers. Good for truly stateful things
+  // like sensors, but bad for buttons - results in "ghost" messages.
+  bool retain_state;
+
+  // Indicates whether the entity expects to receive commands from the broker.
+  bool expects_commands = false;
+};
+
 class Entity : public Core::IntrusiveNode<Entity> {
  protected:
   Device& device_;  // Non-const to allow registration
@@ -33,8 +46,7 @@ class Entity : public Core::IntrusiveNode<Entity> {
   static constexpr uint8_t RETAIN_STATE = 1 << 4;
   static constexpr uint8_t EXPECTS_COMMANDS = 1 << 5;
 
-  Entity(Device& device, const char* domain, const char* object_id, const char* name,
-         bool expects_commands);
+  Entity(Device& device, const EntityConfig& config);
 
   void request_publish();
   void request_discovery();
