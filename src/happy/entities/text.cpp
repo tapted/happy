@@ -14,7 +14,11 @@ bool TextBase::get_discovery_payload(sjson::Buffer& buffer) {
   topic_buf_t command_topic;
   get_command_topic(command_topic);
 
+  // optimistic:true because HA won't update to show sanitised payloads and will leave the text
+  // field in a dirty state when the sanitised payload is unchanged. Optimistic means the text field
+  // always gets dirty and will return to the sanitised payload when it changes.
   auto doc = stack_json(node("command_topic", command_topic),  //
+                        node("optimistic", true),              //
                         node_if("icon", config_.icon),         //
                         node_if("entity_category", config_.entity_category));
 
