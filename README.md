@@ -49,7 +49,7 @@ HAPPY::Transports::MqttDevice puck_device({
 HAPPY::Entities::Light onboard_led(puck_device, "status_led", "Onboard LED", {
   .supports_rgb = true,
   .on_update = [](const HAPPY::Entities::Light& light) {
-    auto& strip = HAL::LedStrip::default_instance();
+    auto& strip = halpp::LedStrip::default_instance();
     auto [r, g, b] = light.scaled_rgb();
     
     strip.set_pixel(0, r, g, b);

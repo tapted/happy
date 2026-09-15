@@ -22,7 +22,7 @@ struct LightState {
 // E.g.,
 // ```cpp
 // static void on_light_update(const HAPPY::Entities::Light& light) {
-//   auto& strip = HAL::LedStrip::default_instance();
+//   auto& strip = halpp::LedStrip::default_instance();
 //   auto [r, g, b] = light.scaled_rgb();
 //   strip.set_pixel(0, r, g, b);
 //   strip.refresh();

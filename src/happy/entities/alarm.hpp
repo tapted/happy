@@ -21,15 +21,15 @@ namespace HAPPY::Entities {
 //       const auto tone = alarm.selected_tone();
 //       ESP_LOGI(TAG, "Alarm %d test triggered!", alarm.id);
 //       if (tone == "acknowledge") {
-//         HAL::Passive::default_instance().play(HAL::beeps::acknowledge);
+//         halpp::Passive::default_instance().play(halpp::beeps::acknowledge);
 //       } else if (tone == "success") {
-//         HAL::Passive::default_instance().play(HAL::beeps::success);
+//         halpp::Passive::default_instance().play(halpp::beeps::success);
 //       } else if (tone == "error") {
-//         HAL::Passive::default_instance().play(HAL::beeps::error);
+//         halpp::Passive::default_instance().play(halpp::beeps::error);
 //       } else if (tone == "startup") {
-//         HAL::Passive::default_instance().play(HAL::beeps::startup);
+//         halpp::Passive::default_instance().play(halpp::beeps::startup);
 //       } else if (tone == "Jasmine Flower") {
-//         HAL::Passive::default_instance().play(HAL::melodies::mo_li_hua);
+//         halpp::Passive::default_instance().play(halpp::melodies::mo_li_hua);
 //       }
 //     });
 // ```
