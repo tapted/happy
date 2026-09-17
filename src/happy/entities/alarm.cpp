@@ -22,7 +22,7 @@ AlarmController::AlarmController(Device& device, uint8_t alarm_id,
       // We dynamically construct the IDs like "alarm_1_time"
       time_id_("alarm", id, "time"),
       time_name_("Alarm", id, "Time", ' '),
-      day_mask_id_("alarm", id, "day_mas"),
+      day_mask_id_("alarm", id, "day_mas"),  // 15 chars. 16 if >=10.
       day_mask_name_("Alarm", id, "Days", ' '),
       tone_id_("alarm", id, "tone"),
       tone_name_("Alarm", id, "Tone", ' '),

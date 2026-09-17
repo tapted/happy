@@ -4,6 +4,7 @@
 #include "happy/entities/day_mask.hpp"
 #include "happy/entities/select.hpp"
 #include "happy/entities/time.hpp"
+#include "espbase/nvs_store.hpp"
 
 namespace HAPPY::Entities {
 
@@ -39,7 +40,7 @@ class AlarmController {
    public:
     IdBuf(const char* prefix, uint8_t alarm_id, const char* suffix, char sep = '_');
     operator const char*() const { return buf_; }
-    char buf_[16];
+    NvsStore::KeyBuf buf_;
   };
 
   const uint8_t id;

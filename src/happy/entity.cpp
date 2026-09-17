@@ -67,8 +67,8 @@ void Entity::get_command_topic(topic_buf_t& buf) const {
 }
 
 bool Entity::load_nvs_blob(void* dest, size_t size) const {
-  char ns[16]{};
-  char key[16]{};
+  NvsStore::KeyBuf ns{};
+  NvsStore::KeyBuf key{};
 
   snprintf(ns, sizeof(ns), "ha_%s", domain_);
   snprintf(key, sizeof(key), "%s", object_id_);
@@ -78,8 +78,8 @@ bool Entity::load_nvs_blob(void* dest, size_t size) const {
 }
 
 void Entity::save_nvs_blob(const void* src, size_t size) const {
-  char ns[16]{};
-  char key[16]{};
+  NvsStore::KeyBuf ns{};
+  NvsStore::KeyBuf key{};
 
   snprintf(ns, sizeof(ns), "ha_%s", domain_);
   snprintf(key, sizeof(key), "%s", object_id_);
